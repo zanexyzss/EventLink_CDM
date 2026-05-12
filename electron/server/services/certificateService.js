@@ -3,6 +3,27 @@ const path = require('path');
 const fs = require('fs');
 const { createCertificateRecord } = require('../db/queries');
 
+// Cloud-compatible Puppeteer launch options
+function getPuppeteerOptions() {
+  const opts = {
+    headless: 'new',
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      '--disable-software-rasterizer',
+      '--single-process',
+      '--no-zygote'
+    ]
+  };
+  // If PUPPETEER_EXECUTABLE_PATH is set (e.g. on Render), use it
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    opts.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+  return opts;
+}
+
 const CERT_DIR = path.join(__dirname, '../../../assets/certificates');
 if (!fs.existsSync(CERT_DIR)) fs.mkdirSync(CERT_DIR, { recursive: true });
 
@@ -89,10 +110,7 @@ function getCertificateHTML(user, event, options = {}) {
 }
 
 async function generateCertificate(user, event) {
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu']
-  });
+  const browser = await puppeteer.launch(getPuppeteerOptions());
   const page = await browser.newPage();
   await page.setContent(getCertificateHTML(user, event), { waitUntil: 'networkidle0', timeout: 15000 });
   await page.setViewport({ width: 1122, height: 794 });
@@ -123,10 +141,7 @@ async function generateSingleCertificate(user, event) {
 async function bulkGenerateCertificates(attendees, event) {
   const results = [];
   // Reuse a single browser for performance
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu']
-  });
+  const browser = await puppeteer.launch(getPuppeteerOptions());
 
   for (const user of attendees) {
     try {
