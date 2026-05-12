@@ -63,9 +63,9 @@ async function deleteUser(id) {
 async function getDashboardStats(userId, role) {
   if (role === 'admin' || role === 'organizer') {
     const totalEvents = (await queryOne('SELECT COUNT(*) as c FROM events')).c;
-    const totalUsers = (await queryOne('SELECT COUNT(*) as c FROM users WHERE role="student"')).c;
+    const totalUsers = (await queryOne("SELECT COUNT(*) as c FROM users WHERE role='student'")).c;
     const totalRegistrations = (await queryOne('SELECT COUNT(*) as c FROM registrations')).c;
-    const activeEvents = (await queryOne('SELECT COUNT(*) as c FROM events WHERE status="open"')).c;
+    const activeEvents = (await queryOne("SELECT COUNT(*) as c FROM events WHERE status='open'")).c;
     return { totalEvents, totalUsers, totalRegistrations, activeEvents };
   } else {
     const registered = (await queryOne('SELECT COUNT(*) as c FROM registrations WHERE user_id = ?', [userId])).c;
@@ -93,7 +93,7 @@ async function getAllEvents({ status, organizer_id, search, limit = 20, offset =
 async function getEventById(id) {
   const event = await queryOne('SELECT e.*, u.full_name as organizer_name FROM events e LEFT JOIN users u ON e.organizer_id = u.id WHERE e.id = ?', [id]);
   if (event) {
-    const c = await queryOne('SELECT COUNT(*) as total FROM registrations WHERE event_id = ? AND status="confirmed"', [id]);
+    const c = await queryOne("SELECT COUNT(*) as total FROM registrations WHERE event_id = ? AND status='confirmed'", [id]);
     event.registered_count = c.total;
   }
   return event;
@@ -155,7 +155,7 @@ async function cancelRegistration(eventId, userId) {
 }
 
 async function getRegistrationCount(eventId) {
-  const row = await queryOne('SELECT COUNT(*) as c FROM registrations WHERE event_id = ? AND status="confirmed"', [eventId]);
+  const row = await queryOne("SELECT COUNT(*) as c FROM registrations WHERE event_id = ? AND status='confirmed'", [eventId]);
   return row ? row.c : 0;
 }
 
@@ -241,7 +241,7 @@ async function getSetting(key, defaultValue = null) {
 }
 
 async function setSetting(key, value) {
-  return await runSql('INSERT INTO settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value)', [key, value]);
+  return await runSql('INSERT INTO settings ("key", value) VALUES (?, ?) ON CONFLICT ("key") DO UPDATE SET value = EXCLUDED.value', [key, value]);
 }
 
 async function getAllSettings() {
