@@ -1,0 +1,133 @@
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
+import logoImg from '../assets/logo.png';
+import bgImg from '../assets/bg.png';
+
+export default function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuthStore();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await login(email, password);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex">
+      {/* Left — Branding */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center p-12">
+        <div className="absolute inset-0">
+          <img src={bgImg} alt="Colegio de Montalban" className="w-full h-full object-cover opacity-40 mix-blend-overlay" />
+          <div className="absolute inset-0 bg-brand-900/90 mix-blend-multiply" />
+        </div>
+        <div className="relative z-10 text-center">
+          <div className="w-24 h-24 mx-auto mb-8 bg-white rounded-full flex items-center justify-center shadow-2xl p-2">
+            <img src={logoImg} alt="Logo" className="w-full h-full object-contain" />
+          </div>
+          <h1 className="text-5xl font-bold text-white mb-4 tracking-tight">EVENTLINK</h1>
+          <div className="text-amber-400 text-sm tracking-[0.4em] font-medium mb-8">CDM</div>
+          <p className="text-brand-200 text-lg max-w-sm mx-auto leading-relaxed">
+            Your centralized campus event management platform. Discover, register, and participate seamlessly.
+          </p>
+          <div className="mt-12 flex items-center justify-center gap-8 text-brand-300 text-sm">
+            <div className="text-center"><div className="text-3xl font-bold text-white mb-1">100+</div>Events</div>
+            <div className="w-px h-12 bg-brand-700" />
+            <div className="text-center"><div className="text-3xl font-bold text-white mb-1">5K+</div>Students</div>
+            <div className="w-px h-12 bg-brand-700" />
+            <div className="text-center"><div className="text-3xl font-bold text-white mb-1">98%</div>Satisfaction</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right — Form */}
+      <div className="flex-1 flex items-center justify-center p-8 bg-gray-50">
+        <div className="w-full max-w-md">
+          <div className="lg:hidden flex items-center gap-3 mb-10 justify-center">
+            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md p-1">
+              <img src={logoImg} alt="Logo" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-brand-800">EVENTLINK</h1>
+              <p className="text-[10px] tracking-[0.3em] text-brand-600">CDM</p>
+            </div>
+          </div>
+
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome back</h2>
+          <p className="text-gray-500 mb-8">Sign in to access your account</p>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm animate-fadeIn">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <Input
+              label="Email Address"
+              type="email"
+              icon={Mail}
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+
+            <div className="relative">
+              <Input
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                icon={Lock}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-[38px] text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+
+            <Button type="submit" loading={loading} className="w-full" size="lg">
+              Sign In
+            </Button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-gray-500">
+            Don't have an account?{' '}
+            <Link to="/register" className="text-brand-600 hover:text-brand-700 font-medium">
+              Create account
+            </Link>
+          </p>
+
+          <div className="mt-8 p-4 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
+            <p className="font-semibold mb-1">Demo Admin Credentials:</p>
+            <p>Email: admin@eventlink.cdm</p>
+            <p>Password: Admin@1234</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
