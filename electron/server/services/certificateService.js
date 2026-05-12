@@ -1,136 +1,169 @@
-const puppeteer = require('puppeteer');
+const PDFDocument = require('pdfkit');
 const path = require('path');
 const fs = require('fs');
 const { createCertificateRecord } = require('../db/queries');
 
-// Cloud-compatible Puppeteer launch options
-function getPuppeteerOptions() {
-  const opts = {
-    headless: 'new',
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-gpu',
-      '--disable-dev-shm-usage',
-      '--disable-software-rasterizer',
-      '--single-process',
-      '--no-zygote'
-    ]
-  };
-  // If PUPPETEER_EXECUTABLE_PATH is set (e.g. on Render), use it
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-    opts.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-  }
-  return opts;
-}
-
 const CERT_DIR = path.join(__dirname, '../../../assets/certificates');
 if (!fs.existsSync(CERT_DIR)) fs.mkdirSync(CERT_DIR, { recursive: true });
 
-function getCertificateHTML(user, event, options = {}) {
-  const eventDate = new Date(String(event.event_date).replace(' ', 'T'));
-  const formattedDate = !isNaN(eventDate.getTime())
-    ? eventDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-    : event.event_date;
+function generateCertificatePDF(user, event) {
+  return new Promise((resolve, reject) => {
+    try {
+      const eventDate = new Date(String(event.event_date).replace(' ', 'T'));
+      const formattedDate = !isNaN(eventDate.getTime())
+        ? eventDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+        : event.event_date;
+      const issuedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      const certId = 'CDM-' + (event.id || '0') + '-' + (user.id || '0') + '-' + Date.now().toString(36).toUpperCase();
 
-  const institutionName = options.institution || 'Colegio de Montalban';
-  const issuedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  const certId = 'CDM-' + (event.id || '0') + '-' + (user.id || '0') + '-' + Date.now().toString(36).toUpperCase();
+      const safeName = user.full_name.replace(/[^a-zA-Z0-9]/g, '_');
+      const filename = `cert_${event.id}_${user.id}_${safeName}.pdf`;
+      const filePath = path.join(CERT_DIR, filename);
 
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
-    '@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Great+Vibes&display=swap");' +
-    '*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }' +
-    'html, body { width: 100%; height: 100%; overflow: hidden; background: #fff; }' +
-    '.page { width: 100%; height: 100%; position: relative; background: linear-gradient(160deg, #fffef7 0%, #fefcf0 30%, #fffdf5 60%, #fefaed 100%); font-family: "Inter", sans-serif; overflow: hidden; }' +
-    '.border-gold { position: absolute; inset: 16px; border: 3px solid #c9a84c; pointer-events: none; }' +
-    '.border-inner { position: absolute; inset: 24px; border: 1px solid rgba(180,145,60,0.3); pointer-events: none; }' +
-    '.corner { position: absolute; width: 80px; height: 80px; pointer-events: none; }' +
-    '.corner svg { width: 100%; height: 100%; }' +
-    '.c-tl { top: 20px; left: 20px; }' +
-    '.c-tr { top: 20px; right: 20px; transform: scaleX(-1); }' +
-    '.c-bl { bottom: 20px; left: 20px; transform: scaleY(-1); }' +
-    '.c-br { bottom: 20px; right: 20px; transform: scale(-1,-1); }' +
-    '.accent-left, .accent-right { position: absolute; top: 50%; width: 3px; height: 200px; transform: translateY(-50%); pointer-events: none; }' +
-    '.accent-left { left: 40px; background: linear-gradient(to bottom, transparent, #c9a84c 30%, #c9a84c 70%, transparent); }' +
-    '.accent-right { right: 40px; background: linear-gradient(to bottom, transparent, #c9a84c 30%, #c9a84c 70%, transparent); }' +
-    '.institution-banner { text-align: center; padding-top: 50px; margin-bottom: 6px; }' +
-    '.institution-name { font-family: "Inter", sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 6px; text-transform: uppercase; color: #8b7332; }' +
-    '.cert-title-block { text-align: center; margin-bottom: 8px; }' +
-    '.cert-of { font-family: "Inter", sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 8px; text-transform: uppercase; color: #999; }' +
-    '.cert-main-title { font-family: "Playfair Display", serif; font-size: 56px; font-weight: 700; color: #1a1a2e; line-height: 1.1; }' +
-    '.gold-divider { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 10px auto 14px; width: 420px; }' +
-    '.gold-divider .line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, #c9a84c, transparent); }' +
-    '.gold-divider .diamond { width: 8px; height: 8px; background: #c9a84c; transform: rotate(45deg); flex-shrink: 0; }' +
-    '.presented-to { text-align: center; font-family: "Inter", sans-serif; font-size: 11px; font-weight: 400; letter-spacing: 5px; text-transform: uppercase; color: #aaa; margin-bottom: 8px; }' +
-    '.recipient { text-align: center; margin-bottom: 4px; }' +
-    '.recipient-name { font-family: "Great Vibes", cursive; font-size: 52px; font-weight: 400; color: #1a1a2e; line-height: 1.2; }' +
-    '.name-underline { width: 380px; height: 2px; margin: 2px auto 16px; background: linear-gradient(90deg, transparent, #c9a84c 20%, #c9a84c 80%, transparent); }' +
-    '.description { text-align: center; font-family: "Inter", sans-serif; font-size: 13px; font-weight: 400; color: #666; line-height: 1.9; max-width: 560px; margin: 0 auto 20px; }' +
-    '.description .event-title { font-weight: 700; color: #1a1a2e; font-size: 14px; }' +
-    '.description .event-date { font-weight: 600; color: #8b7332; }' +
-    '.description .event-venue { font-weight: 500; color: #555; }' +
-    '.footer-area { position: absolute; bottom: 44px; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 80px; }' +
-    '.sig-block { text-align: center; width: 200px; }' +
-    '.sig-line { width: 170px; height: 1px; background: #333; margin: 0 auto 6px; }' +
-    '.sig-role { font-family: "Inter", sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #888; }' +
-    '.sig-name-text { font-family: "Inter", sans-serif; font-size: 10px; font-weight: 500; color: #555; margin-top: 2px; }' +
-    '.seal-area { text-align: center; }' +
-    '.seal { width: 72px; height: 72px; border: 2px solid #c9a84c; border-radius: 50%; margin: 0 auto 6px; display: flex; align-items: center; justify-content: center; background: linear-gradient(145deg, #fef9e7 0%, #fdf2d5 100%); }' +
-    '.seal-inner { width: 56px; height: 56px; border: 1px solid rgba(180,145,60,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-direction: column; }' +
-    '.seal-icon { font-size: 22px; line-height: 1; }' +
-    '.seal-text { font-family: "Inter", sans-serif; font-size: 5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #8b7332; margin-top: 1px; }' +
-    '.footer-system { font-family: "Inter", sans-serif; font-size: 8px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: #bbb; }' +
-    '.footer-issued { font-family: "Inter", sans-serif; font-size: 7px; font-weight: 400; color: #ccc; margin-top: 2px; }' +
-    '.cert-id { position: absolute; bottom: 28px; right: 42px; font-family: "Inter", sans-serif; font-size: 7px; font-weight: 400; color: #ccc; letter-spacing: 1px; }' +
-    '</style></head><body>' +
-    '<div class="page">' +
-    '<div class="border-gold"></div>' +
-    '<div class="border-inner"></div>' +
-    '<div class="corner c-tl"><svg viewBox="0 0 80 80"><path d="M2,2 L30,2 L30,5 L5,5 L5,30 L2,30 Z" fill="#c9a84c"/><path d="M2,2 L18,2 L18,4 L4,4 L4,18 L2,18 Z" fill="rgba(180,145,60,0.4)"/><circle cx="8" cy="8" r="2" fill="rgba(180,145,60,0.3)"/></svg></div>' +
-    '<div class="corner c-tr"><svg viewBox="0 0 80 80"><path d="M2,2 L30,2 L30,5 L5,5 L5,30 L2,30 Z" fill="#c9a84c"/><path d="M2,2 L18,2 L18,4 L4,4 L4,18 L2,18 Z" fill="rgba(180,145,60,0.4)"/><circle cx="8" cy="8" r="2" fill="rgba(180,145,60,0.3)"/></svg></div>' +
-    '<div class="corner c-bl"><svg viewBox="0 0 80 80"><path d="M2,2 L30,2 L30,5 L5,5 L5,30 L2,30 Z" fill="#c9a84c"/><path d="M2,2 L18,2 L18,4 L4,4 L4,18 L2,18 Z" fill="rgba(180,145,60,0.4)"/><circle cx="8" cy="8" r="2" fill="rgba(180,145,60,0.3)"/></svg></div>' +
-    '<div class="corner c-br"><svg viewBox="0 0 80 80"><path d="M2,2 L30,2 L30,5 L5,5 L5,30 L2,30 Z" fill="#c9a84c"/><path d="M2,2 L18,2 L18,4 L4,4 L4,18 L2,18 Z" fill="rgba(180,145,60,0.4)"/><circle cx="8" cy="8" r="2" fill="rgba(180,145,60,0.3)"/></svg></div>' +
-    '<div class="accent-left"></div>' +
-    '<div class="accent-right"></div>' +
-    '<div class="institution-banner"><div class="institution-name">' + institutionName + '</div></div>' +
-    '<div class="cert-title-block"><div class="cert-of">Certificate of</div><div class="cert-main-title">Completion</div></div>' +
-    '<div class="gold-divider"><div class="line"></div><div class="diamond"></div><div class="line"></div></div>' +
-    '<div class="presented-to">This is proudly presented to</div>' +
-    '<div class="recipient"><div class="recipient-name">' + user.full_name + '</div></div>' +
-    '<div class="name-underline"></div>' +
-    '<div class="description">For the successful completion of the<br><span class="event-title">' + event.title + '</span><br>held on <span class="event-date">' + formattedDate + '</span>' + (event.venue ? ' at <span class="event-venue">' + event.venue + '</span>' : '') + '.</div>' +
-    '<div class="footer-area">' +
-    '<div class="sig-block"><div class="sig-line"></div><div class="sig-role">Event Organizer</div><div class="sig-name-text">' + (event.organizer_name || 'Event Committee') + '</div></div>' +
-    '<div class="seal-area"><div class="seal"><div class="seal-inner"><div class="seal-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="#c9a84c"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg></div><div class="seal-text">Verified</div></div></div><div class="footer-system">EventLink CDM</div><div class="footer-issued">Issued ' + issuedDate + '</div></div>' +
-    '<div class="sig-block"><div class="sig-line"></div><div class="sig-role">Administrator</div><div class="sig-name-text">System Administrator</div></div>' +
-    '</div>' +
-    '<div class="cert-id">ID: ' + certId + '</div>' +
-    '</div>' +
-    '</body></html>';
+      const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 0 });
+      const stream = fs.createWriteStream(filePath);
+      doc.pipe(stream);
+
+      const W = 841.89;
+      const H = 595.28;
+
+      // === BACKGROUND ===
+      doc.rect(0, 0, W, H).fill('#fdfbf5');
+
+      // === OUTER BORDER (gold) ===
+      doc.lineWidth(3).strokeColor('#c9a84c')
+        .rect(20, 20, W - 40, H - 40).stroke();
+
+      // === INNER BORDER ===
+      doc.lineWidth(1).strokeColor('#d4af37')
+        .rect(30, 30, W - 60, H - 60).stroke();
+
+      // === DECORATIVE CORNER ACCENTS ===
+      const cornerSize = 40;
+      // Top-left
+      doc.lineWidth(2).strokeColor('#c9a84c');
+      doc.moveTo(25, 25).lineTo(25 + cornerSize, 25).stroke();
+      doc.moveTo(25, 25).lineTo(25, 25 + cornerSize).stroke();
+      // Top-right
+      doc.moveTo(W - 25, 25).lineTo(W - 25 - cornerSize, 25).stroke();
+      doc.moveTo(W - 25, 25).lineTo(W - 25, 25 + cornerSize).stroke();
+      // Bottom-left
+      doc.moveTo(25, H - 25).lineTo(25 + cornerSize, H - 25).stroke();
+      doc.moveTo(25, H - 25).lineTo(25, H - 25 - cornerSize).stroke();
+      // Bottom-right
+      doc.moveTo(W - 25, H - 25).lineTo(W - 25 - cornerSize, H - 25).stroke();
+      doc.moveTo(W - 25, H - 25).lineTo(W - 25, H - 25 - cornerSize).stroke();
+
+      // === TOP DECORATIVE LINE ===
+      doc.lineWidth(1).strokeColor('#c9a84c');
+      doc.moveTo(W / 2 - 120, 65).lineTo(W / 2 + 120, 65).stroke();
+
+      // === INSTITUTION ===
+      doc.fontSize(11).fillColor('#8b7355')
+        .font('Helvetica').text('Colegio de Montalban', 0, 75, { align: 'center', width: W });
+
+      // === TITLE ===
+      doc.fontSize(36).fillColor('#1a1a2e')
+        .font('Helvetica-Bold').text('CERTIFICATE', 0, 105, { align: 'center', width: W });
+      doc.fontSize(16).fillColor('#c9a84c')
+        .font('Helvetica').text('OF PARTICIPATION', 0, 148, { align: 'center', width: W, characterSpacing: 4 });
+
+      // === DECORATIVE DIVIDER ===
+      const divY = 175;
+      doc.lineWidth(0.5).strokeColor('#c9a84c');
+      doc.moveTo(W / 2 - 100, divY).lineTo(W / 2 - 10, divY).stroke();
+      doc.moveTo(W / 2 + 10, divY).lineTo(W / 2 + 100, divY).stroke();
+      // Diamond in center
+      doc.save();
+      doc.translate(W / 2, divY);
+      doc.rotate(45);
+      doc.rect(-4, -4, 8, 8).fill('#c9a84c');
+      doc.restore();
+
+      // === PRESENTED TO ===
+      doc.fontSize(11).fillColor('#8b7355')
+        .font('Helvetica').text('This certificate is proudly presented to', 0, 195, { align: 'center', width: W });
+
+      // === NAME ===
+      doc.fontSize(32).fillColor('#1a1a2e')
+        .font('Helvetica-Bold').text(user.full_name, 0, 225, { align: 'center', width: W });
+
+      // === NAME UNDERLINE ===
+      const nameWidth = doc.widthOfString(user.full_name);
+      const nameX = (W - nameWidth) / 2;
+      doc.lineWidth(1).strokeColor('#c9a84c');
+      doc.moveTo(nameX, 265).lineTo(nameX + nameWidth, 265).stroke();
+
+      // === DESCRIPTION ===
+      doc.fontSize(12).fillColor('#555555')
+        .font('Helvetica').text(
+          `For the successful completion of the`,
+          0, 285, { align: 'center', width: W }
+        );
+
+      // === EVENT TITLE ===
+      doc.fontSize(18).fillColor('#2d2d7b')
+        .font('Helvetica-Bold').text(event.title, 0, 310, { align: 'center', width: W });
+
+      // === EVENT DETAILS ===
+      doc.fontSize(11).fillColor('#555555')
+        .font('Helvetica').text(
+          `held on ${formattedDate}${event.venue ? ` at ${event.venue}` : ''}.`,
+          0, 340, { align: 'center', width: W }
+        );
+
+      // === FOOTER SECTION ===
+      const footerY = 400;
+
+      // Left signature
+      doc.lineWidth(1).strokeColor('#999999');
+      doc.moveTo(120, footerY + 40).lineTo(300, footerY + 40).stroke();
+      doc.fontSize(10).fillColor('#666666')
+        .font('Helvetica').text('Event Organizer', 120, footerY + 45, { width: 180, align: 'center' });
+      doc.fontSize(9).fillColor('#999999')
+        .text(event.organizer_name || 'Event Committee', 120, footerY + 60, { width: 180, align: 'center' });
+
+      // Center seal
+      doc.save();
+      doc.circle(W / 2, footerY + 25, 30).lineWidth(2).strokeColor('#c9a84c').stroke();
+      doc.circle(W / 2, footerY + 25, 25).lineWidth(1).strokeColor('#d4af37').stroke();
+      doc.fontSize(16).fillColor('#c9a84c')
+        .font('Helvetica-Bold').text('★', W / 2 - 8, footerY + 10);
+      doc.fontSize(7).fillColor('#c9a84c')
+        .font('Helvetica').text('VERIFIED', W / 2 - 18, footerY + 30);
+      doc.restore();
+
+      // System name below seal
+      doc.fontSize(9).fillColor('#999999')
+        .font('Helvetica').text('EventLink CDM', 0, footerY + 65, { align: 'center', width: W });
+      doc.fontSize(8).fillColor('#aaaaaa')
+        .text(`Issued ${issuedDate}`, 0, footerY + 78, { align: 'center', width: W });
+
+      // Right signature
+      doc.lineWidth(1).strokeColor('#999999');
+      doc.moveTo(W - 300, footerY + 40).lineTo(W - 120, footerY + 40).stroke();
+      doc.fontSize(10).fillColor('#666666')
+        .font('Helvetica').text('Administrator', W - 300, footerY + 45, { width: 180, align: 'center' });
+      doc.fontSize(9).fillColor('#999999')
+        .text('System Administrator', W - 300, footerY + 60, { width: 180, align: 'center' });
+
+      // === CERT ID ===
+      doc.fontSize(7).fillColor('#cccccc')
+        .font('Helvetica').text(`ID: ${certId}`, 0, H - 45, { align: 'center', width: W });
+
+      doc.end();
+
+      stream.on('finish', () => resolve(filePath));
+      stream.on('error', (err) => reject(err));
+    } catch (err) {
+      reject(err);
+    }
+  });
 }
 
 async function generateCertificate(user, event) {
-  const browser = await puppeteer.launch(getPuppeteerOptions());
-  const page = await browser.newPage();
-  await page.setContent(getCertificateHTML(user, event), { waitUntil: 'networkidle0', timeout: 15000 });
-  await page.setViewport({ width: 1122, height: 794 });
-
-  const safeName = user.full_name.replace(/[^a-zA-Z0-9]/g, '_');
-  const filename = `cert_${event.id}_${user.id}_${safeName}.pdf`;
-  const filePath = path.join(CERT_DIR, filename);
-
-  await page.pdf({
-    path: filePath,
-    format: 'A4',
-    landscape: true,
-    printBackground: true,
-    margin: { top: 0, right: 0, bottom: 0, left: 0 }
-  });
-  await browser.close();
-
-  // Upsert certificate record
+  const filePath = await generateCertificatePDF(user, event);
   await createCertificateRecord(event.id, user.id, filePath);
-
   return filePath;
 }
 
@@ -140,30 +173,9 @@ async function generateSingleCertificate(user, event) {
 
 async function bulkGenerateCertificates(attendees, event) {
   const results = [];
-  // Reuse a single browser for performance
-  const browser = await puppeteer.launch(getPuppeteerOptions());
-
   for (const user of attendees) {
     try {
-      const page = await browser.newPage();
-      await page.setContent(getCertificateHTML(user, event), { waitUntil: 'networkidle0', timeout: 15000 });
-      await page.setViewport({ width: 1122, height: 794 });
-
-      const safeName = user.full_name.replace(/[^a-zA-Z0-9]/g, '_');
-      const filename = `cert_${event.id}_${user.id}_${safeName}.pdf`;
-      const filePath = path.join(CERT_DIR, filename);
-
-      await page.pdf({
-        path: filePath,
-        format: 'A4',
-        landscape: true,
-        printBackground: true,
-        margin: { top: 0, right: 0, bottom: 0, left: 0 }
-      });
-      await page.close();
-
-      await createCertificateRecord(event.id, user.id, filePath);
-
+      const filePath = await generateCertificate(user, event);
       results.push({ user, filePath, success: true });
       console.log(`[CERT] Generated for ${user.full_name}`);
     } catch (err) {
@@ -171,9 +183,7 @@ async function bulkGenerateCertificates(attendees, event) {
       results.push({ user, error: err.message, success: false });
     }
   }
-
-  await browser.close();
   return results;
 }
 
-module.exports = { generateCertificate, generateSingleCertificate, bulkGenerateCertificates, CERT_DIR };
+module.exports = { generateCertificate, generateSingleCertificate, bulkGenerateCertificates };
