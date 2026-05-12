@@ -9,7 +9,12 @@ async function initDatabase() {
     host: process.env.DB_HOST || '127.0.0.1',
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASS || '',
+    port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 3306,
   };
+
+  if (process.env.DB_SSL === 'true') {
+    dbConfig.ssl = { rejectUnauthorized: false };
+  }
 
   try {
     // 1. Create database if it doesn't exist

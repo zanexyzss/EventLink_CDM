@@ -23,3 +23,7 @@ services:
         sync: false
       - key: DB_NAME
         sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_SSL
+        value: "true"
