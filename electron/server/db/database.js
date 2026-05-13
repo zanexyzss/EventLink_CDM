@@ -196,29 +196,37 @@ async function runMigrations() {
 }
 
 async function seedDefaults() {
-  const bcrypt = require('bcryptjs');
-  const admin = await queryOne('SELECT id FROM users WHERE email = ? OR student_id = ?', ['admin@gmail.com', 'ADMIN-001']);
-  if (!admin) {
-    const hash = bcrypt.hashSync('Admin@1234', 10);
-    await pool.query(
-      'INSERT INTO users (full_name, email, password_hash, role, student_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING',
-      ['Admin', 'admin@gmail.com', hash, 'admin', 'ADMIN-001']
-    );
-    console.log('[DB] Default admin seeded: admin@gmail.com / Admin@1234');
+  try {
+    const bcrypt = require('bcryptjs');
+    const admin = await queryOne('SELECT id FROM users WHERE email = ? OR student_id = ?', ['admin@gmail.com', 'ADMIN-001']);
+    if (!admin) {
+      const hash = bcrypt.hashSync('Admin@1234', 10);
+      await pool.query(
+        'INSERT INTO users (full_name, email, password_hash, role, student_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING',
+        ['Admin', 'admin@gmail.com', hash, 'admin', 'ADMIN-001']
+      );
+      console.log('[DB] Default admin seeded: admin@gmail.com / Admin@1234');
+    }
+  } catch (err) {
+    console.error('[DB] Admin seed error (non-fatal):', err.message);
   }
 
-  const defaults = [
-    ['app_name', 'EVENTLINK CDM'],
-    ['institution_name', 'CDM'],
-    ['email_configured', '0'],
-    ['certificate_template', 'default']
-  ];
+  try {
+    const defaults = [
+      ['app_name', 'EVENTLINK CDM'],
+      ['institution_name', 'CDM'],
+      ['email_configured', '0'],
+      ['certificate_template', 'default']
+    ];
 
-  for (const [key, value] of defaults) {
-    await pool.query(
-      'INSERT INTO settings ("key", value) VALUES ($1, $2) ON CONFLICT ("key") DO NOTHING',
-      [key, value]
-    );
+    for (const [key, value] of defaults) {
+      await pool.query(
+        'INSERT INTO settings ("key", value) VALUES ($1, $2) ON CONFLICT ("key") DO NOTHING',
+        [key, value]
+      );
+    }
+  } catch (err) {
+    console.error('[DB] Settings seed error (non-fatal):', err.message);
   }
 }
 
