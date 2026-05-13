@@ -31,9 +31,16 @@ export default function Layout() {
   const filteredNav = navItems.filter(item => item.roles.includes(user?.role));
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50/30 relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-brand-400/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
+        <div className="absolute bottom-0 left-1/3 w-[500px] h-[500px] bg-blue-400/5 rounded-full blur-3xl translate-y-1/3" />
+        <div className="absolute top-1/2 right-1/4 w-[400px] h-[400px] bg-purple-400/3 rounded-full blur-3xl" />
+      </div>
+
       {/* Sidebar */}
-      <aside className={`${collapsed ? 'w-20' : 'w-64'} bg-brand-800 text-white flex flex-col transition-all duration-300 relative`}>
+      <aside className={`${collapsed ? 'w-20' : 'w-64'} bg-brand-800 text-white flex flex-col transition-all duration-300 relative z-10`}>
         {/* Logo */}
         <div className="p-5 border-b border-brand-700/50">
           <div className="flex items-center gap-3">
@@ -101,8 +108,8 @@ export default function Layout() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-8">
+      <main className="flex-1 overflow-y-auto relative z-10">
+        <div className="p-8 min-h-full">
           <Outlet />
         </div>
       </main>
