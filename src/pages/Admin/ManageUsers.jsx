@@ -4,6 +4,7 @@ import api from '../../lib/api';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Spinner from '../../components/ui/Spinner';
+import Skeleton from '../../components/ui/Skeleton';
 import Modal from '../../components/ui/Modal';
 import { Search, Users, Edit3, Trash2, Building2 } from 'lucide-react';
 import { safeFormat } from '../../lib/dateUtils';
@@ -88,7 +89,9 @@ export default function ManageUsers() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20"><Spinner size="lg" /></div>
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
+        </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <table className="w-full">

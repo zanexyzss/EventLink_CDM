@@ -6,6 +6,7 @@ import api from '../../lib/api';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Spinner from '../../components/ui/Spinner';
+import Skeleton from '../../components/ui/Skeleton';
 import { Key, CheckCircle, CalendarDays, MapPin, Clock } from 'lucide-react';
 import { safeFormat } from '../../lib/dateUtils';
 
@@ -107,7 +108,16 @@ export default function StudentCheckIn() {
     } finally { setSubmitting(false); }
   };
 
-  if (loading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
+  if (loading) return (
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div className="space-y-2">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-5 w-full" />
+      </div>
+      <Skeleton className="h-64 w-full rounded-2xl" />
+      <Skeleton className="h-80 w-full rounded-2xl" />
+    </div>
+  );
 
   // Filter to active/recent events only
   const activeEvents = registrations.filter(r => r.event_status === 'open' || r.event_status === 'closed');

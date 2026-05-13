@@ -74,7 +74,7 @@ export default function Dashboard() {
 
   const statCards = user?.role === 'admin' ? [
     { label: 'Total Events', value: stats.totalEvents || 0, icon: CalendarDays, color: 'from-blue-500 to-indigo-600' },
-    { label: 'Total Students', value: stats.totalStudents || 0, icon: Users, color: 'from-emerald-500 to-teal-600' },
+    { label: 'Total Users', value: stats.totalUsers || 0, icon: Users, color: 'from-emerald-500 to-teal-600' },
     { label: 'Registrations', value: stats.totalRegistrations || 0, icon: ClipboardList, color: 'from-purple-500 to-pink-600' },
     { label: 'Emails Sent', value: stats.emailsSent || 0, icon: TrendingUp, color: 'from-orange-500 to-red-500' },
   ] : [

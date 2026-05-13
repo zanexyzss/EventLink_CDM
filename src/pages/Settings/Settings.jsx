@@ -5,6 +5,7 @@ import api from '../../lib/api';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Spinner from '../../components/ui/Spinner';
+import Skeleton from '../../components/ui/Skeleton';
 import { Mail, Building2, Save, Send, CheckCircle } from 'lucide-react';
 
 export default function Settings() {
@@ -58,7 +59,16 @@ export default function Settings() {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
-  if (loading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
+  if (loading) return (
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div className="space-y-2">
+        <Skeleton className="h-10 w-48" />
+        <Skeleton className="h-5 w-64" />
+      </div>
+      <Skeleton className="h-48 w-full rounded-2xl" />
+      <Skeleton className="h-96 w-full rounded-2xl" />
+    </div>
+  );
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fadeIn">

@@ -5,6 +5,7 @@ import api from '../../lib/api';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Spinner from '../../components/ui/Spinner';
+import Skeleton from '../../components/ui/Skeleton';
 import { Search, UserCheck, Users, Key, Clock, Award, RefreshCw, StopCircle, PlayCircle, Copy, QrCode } from 'lucide-react';
 import { safeFormat } from '../../lib/dateUtils';
 import QRCode from 'qrcode';
@@ -157,7 +158,24 @@ export default function AttendanceScanner() {
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
-  if (loading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
+  if (loading) return (
+    <div className="space-y-6">
+      <Skeleton className="h-5 w-32" />
+      <div className="flex justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-5 w-48" />
+        </div>
+        <div className="flex gap-4">
+          <Skeleton className="h-16 w-24 rounded-xl" />
+          <Skeleton className="h-16 w-24 rounded-xl" />
+        </div>
+      </div>
+      <Skeleton className="h-10 w-48 rounded-xl" />
+      <Skeleton className="h-96 w-full rounded-2xl" />
+    </div>
+  );
+
   if (!event) return <div className="text-center py-20 text-gray-500">Event not found</div>;
 
   const attendedIds = new Set(attendance.map(a => a.user_id));
