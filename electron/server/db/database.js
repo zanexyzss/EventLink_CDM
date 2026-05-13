@@ -197,11 +197,11 @@ async function runMigrations() {
 
 async function seedDefaults() {
   const bcrypt = require('bcryptjs');
-  const admin = await queryOne('SELECT id FROM users WHERE email = ?', ['admin@gmail.com']);
+  const admin = await queryOne('SELECT id FROM users WHERE email = ? OR student_id = ?', ['admin@gmail.com', 'ADMIN-001']);
   if (!admin) {
     const hash = bcrypt.hashSync('Admin@1234', 10);
-    await runSql(
-      'INSERT INTO users (full_name, email, password_hash, role, student_id) VALUES (?, ?, ?, ?, ?)',
+    await pool.query(
+      'INSERT INTO users (full_name, email, password_hash, role, student_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING',
       ['Admin', 'admin@gmail.com', hash, 'admin', 'ADMIN-001']
     );
     console.log('[DB] Default admin seeded: admin@gmail.com / Admin@1234');
