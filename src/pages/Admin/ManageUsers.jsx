@@ -18,7 +18,7 @@ export default function ManageUsers() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [editUser, setEditUser] = useState(null);
-  const [editForm, setEditForm] = useState({ full_name: '', role: '', department: '' });
+  const [editForm, setEditForm] = useState({ full_name: '', role: '', department: '', student_id: '' });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { loadUsers(); }, [search, roleFilter]);
@@ -39,7 +39,21 @@ export default function ManageUsers() {
 
   const openEdit = (u) => {
     setEditUser(u);
-    setEditForm({ full_name: u.full_name || '', role: u.role || 'student', department: u.department || '' });
+    setEditForm({ 
+      full_name: u.full_name || '', 
+      role: u.role || 'student', 
+      department: u.department || '',
+      student_id: u.student_id || '' 
+    });
+  };
+
+  const handleStudentIdChange = (e) => {
+    let val = e.target.value.replace(/\D/g, '');
+    if (val.length > 7) val = val.slice(0, 7);
+    if (val.length > 2) {
+      val = val.slice(0, 2) + '-' + val.slice(2);
+    }
+    setEditForm({ ...editForm, student_id: val });
   };
 
   const handleUpdateUser = async () => {
@@ -142,15 +156,43 @@ export default function ManageUsers() {
           <div className="space-y-4">
             <p className="text-gray-500 text-sm">Editing <strong>{editUser.email}</strong></p>
 
-            {/* Full Name */}
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-700">Full Name</label>
-              <input
-                type="text"
-                value={editForm.full_name}
-                onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              {/* Full Name */}
+              <div className="space-y-1.5 col-span-2">
+                <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                <input
+                  type="text"
+                  value={editForm.full_name}
+                  onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                />
+              </div>
+
+              {/* Student ID */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">Student ID</label>
+                <input
+                  type="text"
+                  value={editForm.student_id}
+                  onChange={handleStudentIdChange}
+                  placeholder="00-00000"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                />
+              </div>
+
+              {/* Role */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">Role</label>
+                <select
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                >
+                  <option value="student">Student</option>
+                  <option value="organizer">Organizer</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
             </div>
 
             {/* Department / Program Dropdown */}
@@ -175,20 +217,6 @@ export default function ManageUsers() {
                   ))}
                 </select>
               </div>
-            </div>
-
-            {/* Role */}
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-700">Role</label>
-              <select
-                value={editForm.role}
-                onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-              >
-                <option value="student">Student</option>
-                <option value="organizer">Organizer</option>
-                <option value="admin">Admin</option>
-              </select>
             </div>
 
             <div className="flex gap-3 justify-end pt-2">

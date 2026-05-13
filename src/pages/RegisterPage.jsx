@@ -13,7 +13,7 @@ import { CDM_DEPARTMENTS } from '../lib/departments';
 const schema = z.object({
   full_name: z.string().min(2, 'Full name is required'),
   email: z.string().email('Invalid email address'),
-  student_id: z.string().optional(),
+  student_id: z.string().regex(/^\d{2}-\d{5}$/, 'Format must be 00-00000'),
   department: z.string().min(1, 'Please select your program'),
   year_level: z.string().optional(),
   password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -29,9 +29,20 @@ export default function RegisterPage() {
   const { register: registerUser } = useAuthStore();
   const navigate = useNavigate();
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
   });
+
+  const handleStudentIdChange = (e) => {
+    let val = e.target.value.replace(/\D/g, ''); // Remove non-digits
+    if (val.length > 7) val = val.slice(0, 7);
+    
+    if (val.length > 2) {
+      val = val.slice(0, 2) + '-' + val.slice(2);
+    }
+    
+    setValue('student_id', val, { shouldValidate: true });
+  };
 
   const onSubmit = async (data) => {
     setError('');
@@ -68,7 +79,14 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <Input label="Full Name" icon={User} placeholder="Juan dela Cruz" error={errors.full_name?.message} {...register('full_name')} />
             <Input label="Email Address" type="email" icon={Mail} placeholder="you@example.com" error={errors.email?.message} {...register('email')} />
-            <Input label="Student ID" icon={Hash} placeholder="2024-0001 (optional)" error={errors.student_id?.message} {...register('student_id')} />
+            <Input 
+              label="Student ID" 
+              icon={Hash} 
+              placeholder="00-00000" 
+              error={errors.student_id?.message} 
+              {...register('student_id')}
+              onChange={handleStudentIdChange}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               {/* Department/Program Dropdown */}
