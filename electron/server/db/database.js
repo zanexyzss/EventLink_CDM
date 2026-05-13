@@ -198,14 +198,24 @@ async function runMigrations() {
 async function seedDefaults() {
   try {
     const bcrypt = require('bcryptjs');
-    const admin = await queryOne('SELECT id FROM users WHERE email = ? OR student_id = ?', ['admin@gmail.com', 'ADMIN-001']);
+    const email = 'admin@gmail.com';
+    const defaultPassword = 'Admin@1234';
+    const hash = bcrypt.hashSync(defaultPassword, 10);
+    
+    const admin = await queryOne('SELECT id FROM users WHERE email = ?', [email]);
+    
     if (!admin) {
-      const hash = bcrypt.hashSync('Admin@1234', 10);
       await pool.query(
-        'INSERT INTO users (full_name, email, password_hash, role, student_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING',
-        ['Admin', 'admin@gmail.com', hash, 'admin', 'ADMIN-001']
+        'INSERT INTO users (full_name, email, password_hash, role) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING',
+        ['System Admin', email, hash, 'admin']
       );
-      console.log('[DB] Default admin seeded: admin@gmail.com / Admin@1234');
+      console.log(`[DB] Default admin seeded: ${email} / ${defaultPassword}`);
+    } else {
+      await pool.query(
+        'UPDATE users SET password_hash = $1, role = $2 WHERE email = $3',
+        [hash, 'admin', email]
+      );
+      console.log(`[DB] Default admin credentials force-updated to: ${email} / ${defaultPassword}`);
     }
   } catch (err) {
     console.error('[DB] Admin seed error (non-fatal):', err.message);
