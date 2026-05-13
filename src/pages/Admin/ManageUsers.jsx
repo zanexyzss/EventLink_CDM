@@ -5,8 +5,9 @@ import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Spinner from '../../components/ui/Spinner';
 import Modal from '../../components/ui/Modal';
-import { Search, Users, Edit3, Trash2 } from 'lucide-react';
+import { Search, Users, Edit3, Trash2, Building2 } from 'lucide-react';
 import { safeFormat } from '../../lib/dateUtils';
+import { CDM_DEPARTMENTS } from '../../lib/departments';
 
 export default function ManageUsers() {
   const toast = useToastStore();
@@ -16,7 +17,7 @@ export default function ManageUsers() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [editUser, setEditUser] = useState(null);
-  const [editRole, setEditRole] = useState('');
+  const [editForm, setEditForm] = useState({ full_name: '', role: '', department: '' });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { loadUsers(); }, [search, roleFilter]);
@@ -35,12 +36,17 @@ export default function ManageUsers() {
     } finally { setLoading(false); }
   };
 
-  const handleUpdateRole = async () => {
+  const openEdit = (u) => {
+    setEditUser(u);
+    setEditForm({ full_name: u.full_name || '', role: u.role || 'student', department: u.department || '' });
+  };
+
+  const handleUpdateUser = async () => {
     if (!editUser) return;
     setSaving(true);
     try {
-      await api.put(`/users/${editUser.id}`, { role: editRole });
-      toast.success(`Updated ${editUser.full_name}'s role to ${editRole}`);
+      await api.put(`/users/${editUser.id}`, editForm);
+      toast.success(`Updated ${editForm.full_name} successfully`);
       setEditUser(null);
       loadUsers();
     } catch (err) {
@@ -109,7 +115,7 @@ export default function ManageUsers() {
                   <td className="px-6 py-4 text-sm text-gray-500">{safeFormat(u.created_at, 'MMM d, yyyy')}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex gap-1 justify-end">
-                      <button onClick={() => { setEditUser(u); setEditRole(u.role); }} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-brand-600 transition-colors">
+                      <button onClick={() => openEdit(u)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-brand-600 transition-colors">
                         <Edit3 size={16} />
                       </button>
                       <button onClick={() => handleDelete(u)} className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors">
@@ -127,20 +133,64 @@ export default function ManageUsers() {
         </div>
       )}
 
-      {/* Edit Role Modal */}
-      <Modal isOpen={!!editUser} onClose={() => setEditUser(null)} title="Edit User Role">
+      {/* Edit User Modal */}
+      <Modal isOpen={!!editUser} onClose={() => setEditUser(null)} title="Edit User">
         {editUser && (
           <div className="space-y-4">
-            <p className="text-gray-600">Change role for <strong>{editUser.full_name}</strong></p>
-            <select value={editRole} onChange={(e) => setEditRole(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20">
-              <option value="student">Student</option>
-              <option value="organizer">Organizer</option>
-              <option value="admin">Admin</option>
-            </select>
+            <p className="text-gray-500 text-sm">Editing <strong>{editUser.email}</strong></p>
+
+            {/* Full Name */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">Full Name</label>
+              <input
+                type="text"
+                value={editForm.full_name}
+                onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              />
+            </div>
+
+            {/* Department / Program Dropdown */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">Department / Program</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Building2 size={18} className="text-gray-400" />
+                </div>
+                <select
+                  value={editForm.department}
+                  onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                  className="w-full pl-10 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 appearance-none"
+                >
+                  <option value="">Select program...</option>
+                  {CDM_DEPARTMENTS.map((dept) => (
+                    <optgroup key={dept.institute} label={dept.institute}>
+                      {dept.programs.map((prog) => (
+                        <option key={prog} value={prog}>{prog}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Role */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">Role</label>
+              <select
+                value={editForm.role}
+                onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              >
+                <option value="student">Student</option>
+                <option value="organizer">Organizer</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+
             <div className="flex gap-3 justify-end pt-2">
               <Button variant="ghost" onClick={() => setEditUser(null)}>Cancel</Button>
-              <Button onClick={handleUpdateRole} loading={saving}>Save Changes</Button>
+              <Button onClick={handleUpdateUser} loading={saving}>Save Changes</Button>
             </div>
           </div>
         )}

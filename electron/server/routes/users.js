@@ -17,6 +17,22 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+// PUT /api/users/me — Student updates their own profile (name only)
+// MUST be before /:id to avoid Express matching "me" as an :id
+router.put('/me', authenticateToken, async (req, res) => {
+  try {
+    const { full_name } = req.body;
+    if (!full_name || full_name.trim().length < 2) {
+      return res.status(400).json({ error: 'Full name must be at least 2 characters' });
+    }
+    const user = await updateUser(req.user.id, { full_name: full_name.trim() });
+    const { password_hash, ...safeUser } = user;
+    res.json({ data: safeUser, message: 'Profile updated' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update profile', detail: err.message });
+  }
+});
+
 // GET /api/users/:id
 router.get('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {

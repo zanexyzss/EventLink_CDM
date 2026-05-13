@@ -169,13 +169,13 @@ async def init_db():
     # Seed default admin
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            select(User).where(User.email == "admin@eventlink.cdm")
+            select(User).where(User.email == "admin@gmail.com")
         )
         if not result.scalar_one_or_none():
             session.add(User(
                 student_id="ADMIN-001",
-                full_name="System Administrator",
-                email="admin@eventlink.cdm",
+                full_name="Admin",
+                email="admin@gmail.com",
                 password_hash=hash_password("Admin@1234"),
                 role="admin"
             ))
@@ -298,6 +298,7 @@ class Setting(Base):
 ## `app/schemas/` — PYDANTIC MODELS
 
 ### `app/schemas/auth.py`
+
 ```python
 from pydantic import BaseModel, EmailStr
 from typing import Optional
@@ -332,6 +333,7 @@ class TokenResponse(BaseModel):
 ```
 
 ### `app/schemas/events.py`
+
 ```python
 from pydantic import BaseModel
 from typing import Optional
@@ -375,6 +377,7 @@ class EventOut(BaseModel):
 ```
 
 ### `app/schemas/registrations.py`
+
 ```python
 from pydantic import BaseModel
 from datetime import datetime
@@ -391,6 +394,7 @@ class RegistrationOut(BaseModel):
 ```
 
 ### `app/schemas/attendance.py`
+
 ```python
 from pydantic import BaseModel
 from datetime import datetime
@@ -1235,32 +1239,42 @@ async def health():
 Update `electron/main.js` to spawn Python instead of requiring Express:
 
 ```javascript
-const { spawn } = require('child_process');
-const path = require('path');
+const { spawn } = require("child_process");
+const path = require("path");
 let pythonProcess = null;
 
 function startPythonServer() {
-  const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-  const backendPath = path.join(__dirname, '../backend');
+  const pythonCmd = process.platform === "win32" ? "python" : "python3";
+  const backendPath = path.join(__dirname, "../backend");
 
-  pythonProcess = spawn(pythonCmd, [
-    '-m', 'uvicorn', 'app.main:app',
-    '--host', '127.0.0.1',
-    '--port', '8000',
-    '--reload'   // remove in production build
-  ], {
-    cwd: backendPath,
-    stdio: 'pipe',
-    env: { ...process.env, PYTHONUNBUFFERED: '1' }
-  });
+  pythonProcess = spawn(
+    pythonCmd,
+    [
+      "-m",
+      "uvicorn",
+      "app.main:app",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "8000",
+      "--reload", // remove in production build
+    ],
+    {
+      cwd: backendPath,
+      stdio: "pipe",
+      env: { ...process.env, PYTHONUNBUFFERED: "1" },
+    },
+  );
 
-  pythonProcess.stdout.on('data', (d) => console.log('[Python]', d.toString()));
-  pythonProcess.stderr.on('data', (d) => console.error('[Python ERR]', d.toString()));
+  pythonProcess.stdout.on("data", (d) => console.log("[Python]", d.toString()));
+  pythonProcess.stderr.on("data", (d) =>
+    console.error("[Python ERR]", d.toString()),
+  );
 
   return new Promise((resolve) => {
     // Wait for uvicorn to be ready
-    pythonProcess.stderr.on('data', (d) => {
-      if (d.toString().includes('Application startup complete')) resolve();
+    pythonProcess.stderr.on("data", (d) => {
+      if (d.toString().includes("Application startup complete")) resolve();
     });
     setTimeout(resolve, 4000); // fallback after 4s
   });
@@ -1271,14 +1285,15 @@ app.whenReady().then(async () => {
   createWindow();
 });
 
-app.on('before-quit', () => {
+app.on("before-quit", () => {
   if (pythonProcess) pythonProcess.kill();
 });
 ```
 
 Update `src/lib/api.js` base URL:
+
 ```javascript
-baseURL: 'http://127.0.0.1:8000/api'  // Python FastAPI port
+baseURL: "http://127.0.0.1:8000/api"; // Python FastAPI port
 ```
 
 ---
@@ -1299,6 +1314,7 @@ Swagger UI available at: `http://localhost:8000/api/docs`
 ---
 
 ## VALIDATION CHECKLIST
+
 - [ ] All 8 router files created and mounted in `main.py`
 - [ ] SQLAlchemy models match canonical schema in `00_MASTER_OVERVIEW.md`
 - [ ] JWT dependency works — missing token → 401, wrong role → 403

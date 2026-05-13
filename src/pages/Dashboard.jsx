@@ -5,6 +5,7 @@ import api from '../lib/api';
 import { CalendarDays, Users, ClipboardList, ArrowRight, TrendingUp } from 'lucide-react';
 import EventCard from '../components/EventCard';
 import Spinner from '../components/ui/Spinner';
+import Skeleton from '../components/ui/Skeleton';
 import Button from '../components/ui/Button';
 import { safeFormat } from '../lib/dateUtils';
 
@@ -41,8 +42,33 @@ export default function Dashboard() {
   };
 
   if (loading) return (
-    <div className="flex items-center justify-center h-96">
-      <Spinner size="lg" />
+    <div className="space-y-8 animate-fadeIn">
+      <div>
+        <Skeleton height="36px" width="300px" className="mb-2" />
+        <Skeleton height="20px" width="400px" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 h-[104px]">
+             <div className="flex justify-between items-start">
+                <div>
+                   <Skeleton height="16px" width="80px" className="mb-2" />
+                   <Skeleton height="32px" width="60px" />
+                </div>
+                <Skeleton width="44px" height="44px" className="rounded-xl" />
+             </div>
+          </div>
+        ))}
+      </div>
+      <div>
+         <div className="flex items-center justify-between mb-5">
+           <Skeleton height="28px" width="200px" />
+           <Skeleton height="32px" width="100px" />
+         </div>
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+           {[...Array(3)].map((_, i) => <Skeleton key={i} height="200px" className="rounded-2xl w-full" />)}
+         </div>
+      </div>
     </div>
   );
 

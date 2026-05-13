@@ -5,6 +5,7 @@ import api from '../../lib/api';
 import EventCard from '../../components/EventCard';
 import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
+import Skeleton from '../../components/ui/Skeleton';
 import { Search, Plus, Filter, CalendarDays } from 'lucide-react';
 
 export default function EventList() {
@@ -96,7 +97,9 @@ export default function EventList() {
 
       {/* Events Grid */}
       {loading ? (
-        <div className="flex justify-center py-20"><Spinner size="lg" /></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+           {[...Array(6)].map((_, i) => <Skeleton key={i} height="200px" className="rounded-2xl w-full" />)}
+        </div>
       ) : events.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {events.map((event) => (

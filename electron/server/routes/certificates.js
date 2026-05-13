@@ -103,14 +103,27 @@ router.post('/:eventId/send', authenticateToken, requireOrganizer, async (req, r
     // Fetch users for certs
     const sendDataPromises = certs.map(async cert => {
       const user = await getUserById(cert.user_id);
-      const exists = cert.file_path && fs.existsSync(cert.file_path);
+      let certificatePath = cert.file_path;
+      let pdfData = cert.pdf_data;
+      let exists = !!pdfData || (certificatePath && fs.existsSync(certificatePath));
+
       if (!exists) {
-        console.warn(`[CERT WARNING] File not found for student ${user?.full_name || cert.user_id}: ${cert.file_path}`);
+        console.warn(`[CERT WARNING] File not found for student ${user?.full_name || cert.user_id}, auto-regenerating...`);
+        const { generateSingleCertificate } = require('../services/certificateService');
+        await generateSingleCertificate(user, event);
+        const newCert = await queryOne('SELECT * FROM certificates WHERE event_id = ? AND user_id = ?', [eventId, user.id]);
+        if (newCert) {
+          certificatePath = newCert.file_path;
+          pdfData = newCert.pdf_data;
+          exists = !!pdfData || (certificatePath && fs.existsSync(certificatePath));
+        }
       }
+
       return {
         user,
         event,
-        certificatePath: cert.file_path,
+        certificatePath,
+        pdfData,
         exists
       };
     });
@@ -151,18 +164,34 @@ router.post('/:eventId/send-one', authenticateToken, requireOrganizer, async (re
     const user = await getUserById(user_id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const cert = await queryOne('SELECT * FROM certificates WHERE event_id = ? AND user_id = ?', [eventId, user_id]);
+    let cert = await queryOne('SELECT * FROM certificates WHERE event_id = ? AND user_id = ?', [eventId, user_id]);
     console.log(`[CERT SEND-ONE] Certificate record:`, cert ? { id: cert.id, file_path: cert.file_path, sent: cert.sent_via_email } : 'NOT FOUND');
     
-    if (!cert || !cert.file_path) return res.status(400).json({ error: 'Certificate not generated yet. Generate it first.' });
-    if (!fs.existsSync(cert.file_path)) {
-      console.error(`[CERT SEND-ONE] File missing on disk: ${cert.file_path}`);
-      return res.status(400).json({ error: `Certificate file not found on disk: ${cert.file_path}` });
+    if (!cert) return res.status(400).json({ error: 'Certificate not generated yet. Generate it first.' });
+    
+    let certificatePath = cert.file_path;
+    let pdfData = cert.pdf_data;
+    let exists = !!pdfData || (certificatePath && fs.existsSync(certificatePath));
+
+    if (!exists) {
+      console.warn(`[CERT SEND-ONE] File missing on disk: ${cert.file_path}, auto-regenerating...`);
+      const { generateSingleCertificate } = require('../services/certificateService');
+      await generateSingleCertificate(user, event);
+      const newCert = await queryOne('SELECT * FROM certificates WHERE event_id = ? AND user_id = ?', [eventId, user_id]);
+      if (newCert) {
+        certificatePath = newCert.file_path;
+        pdfData = newCert.pdf_data;
+        exists = !!pdfData || (certificatePath && fs.existsSync(certificatePath));
+      }
     }
 
-    console.log(`[CERT SEND-ONE] Sending to ${user.email} with file ${cert.file_path}`);
+    if (!exists) {
+       return res.status(500).json({ error: 'Failed to auto-regenerate certificate.' });
+    }
+
+    console.log(`[CERT SEND-ONE] Sending to ${user.email}`);
     const { sendCertificate } = require('../services/emailService');
-    const result = await sendCertificate(user, event, cert.file_path);
+    const result = await sendCertificate(user, event, certificatePath, pdfData);
     console.log(`[CERT SEND-ONE] Result:`, result);
 
     if (result.success) {
@@ -183,18 +212,119 @@ router.get('/:eventId/download/:userId', authenticateToken, async (req, res) => 
     const eventId = parseInt(req.params.eventId);
     const userId = parseInt(req.params.userId);
 
-    const cert = await queryOne('SELECT * FROM certificates WHERE event_id = ? AND user_id = ?', [eventId, userId]);
-    if (!cert || !cert.file_path) return res.status(404).json({ error: 'Certificate not found' });
-    if (!fs.existsSync(cert.file_path)) return res.status(404).json({ error: 'Certificate file not found on disk' });
+    let cert = await queryOne('SELECT * FROM certificates WHERE event_id = ? AND user_id = ?', [eventId, userId]);
+    if (!cert) return res.status(404).json({ error: 'Certificate not found' });
+
+    // Students can only download if verified
+    if (req.user.role === 'student' && cert.verification_status !== 'verified') {
+      return res.status(403).json({ error: 'Please verify your name on the certificate before downloading.' });
+    }
+
+    // Auto-regenerate if neither pdf_data nor file on disk exists
+    if (!cert.pdf_data && (!cert.file_path || !fs.existsSync(cert.file_path))) {
+       const user = await getUserById(userId);
+       const event = await getEventById(eventId);
+       const { generateSingleCertificate } = require('../services/certificateService');
+       await generateSingleCertificate(user, event);
+       cert = await queryOne('SELECT * FROM certificates WHERE event_id = ? AND user_id = ?', [eventId, userId]);
+    }
 
     const user = await getUserById(userId);
     const safeName = user ? user.full_name.replace(/[^a-zA-Z0-9]/g, '_') : 'Certificate';
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="Certificate_${safeName}.pdf"`);
-    res.sendFile(path.resolve(cert.file_path));
+
+    if (cert.pdf_data) {
+      return res.send(cert.pdf_data);
+    } else {
+      return res.sendFile(path.resolve(cert.file_path));
+    }
   } catch (err) {
     res.status(500).json({ error: 'Failed to download certificate', detail: err.message });
+  }
+});
+
+// PUT /api/certificates/:eventId/metadata — Admin edits cert title, speaker, name for an attendee
+router.put('/:eventId/metadata', authenticateToken, requireOrganizer, async (req, res) => {
+  try {
+    const eventId = parseInt(req.params.eventId);
+    const { user_id, cert_title, speaker_name, speaker_title, cert_name_override } = req.body;
+    if (!user_id) return res.status(400).json({ error: 'user_id is required' });
+
+    const cert = await queryOne('SELECT id FROM certificates WHERE event_id = ? AND user_id = ?', [eventId, user_id]);
+    if (!cert) return res.status(404).json({ error: 'Certificate not generated yet.' });
+
+    const fields = [];
+    const params = [];
+    if (cert_title !== undefined) { fields.push('cert_title = ?'); params.push(cert_title); }
+    if (speaker_name !== undefined) { fields.push('speaker_name = ?'); params.push(speaker_name); }
+    if (speaker_title !== undefined) { fields.push('speaker_title = ?'); params.push(speaker_title); }
+    if (cert_name_override !== undefined) { fields.push('cert_name_override = ?'); params.push(cert_name_override); }
+
+    if (fields.length === 0) return res.status(400).json({ error: 'No fields to update' });
+
+    // Reset verification when admin changes metadata
+    fields.push('verification_status = ?');
+    params.push('pending');
+
+    params.push(cert.id);
+    await runSql(`UPDATE certificates SET ${fields.join(', ')} WHERE id = ?`, params);
+
+    // Regenerate PDF with new metadata
+    const user = await getUserById(user_id);
+    const event = await getEventById(eventId);
+    const updatedCert = await queryOne('SELECT * FROM certificates WHERE id = ?', [cert.id]);
+    const { generateCertificateWithMeta } = require('../services/certificateService');
+    await generateCertificateWithMeta(user, event, {
+      cert_title: updatedCert.cert_title,
+      speaker_name: updatedCert.speaker_name,
+      speaker_title: updatedCert.speaker_title,
+      cert_name_override: updatedCert.cert_name_override,
+    });
+
+    res.json({ message: 'Certificate metadata updated and PDF regenerated' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update metadata', detail: err.message });
+  }
+});
+
+// PUT /api/certificates/:eventId/verify-name — Student edits their own name and confirms
+router.put('/:eventId/verify-name', authenticateToken, async (req, res) => {
+  try {
+    const eventId = parseInt(req.params.eventId);
+    const userId = req.user.id;
+    const { cert_name_override } = req.body;
+
+    const cert = await queryOne('SELECT id FROM certificates WHERE event_id = ? AND user_id = ?', [eventId, userId]);
+    if (!cert) return res.status(404).json({ error: 'Certificate not found' });
+
+    const fields = ['verification_status = ?'];
+    const params = ['verified'];
+
+    if (cert_name_override && cert_name_override.trim()) {
+      fields.push('cert_name_override = ?');
+      params.push(cert_name_override.trim());
+    }
+
+    params.push(cert.id);
+    await runSql(`UPDATE certificates SET ${fields.join(', ')} WHERE id = ?`, params);
+
+    // Regenerate PDF with the verified name
+    const user = await getUserById(userId);
+    const event = await getEventById(eventId);
+    const updatedCert = await queryOne('SELECT * FROM certificates WHERE id = ?', [cert.id]);
+    const { generateCertificateWithMeta } = require('../services/certificateService');
+    await generateCertificateWithMeta(user, event, {
+      cert_title: updatedCert.cert_title,
+      speaker_name: updatedCert.speaker_name,
+      speaker_title: updatedCert.speaker_title,
+      cert_name_override: updatedCert.cert_name_override || cert_name_override,
+    });
+
+    res.json({ message: 'Name verified and certificate updated' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to verify name', detail: err.message });
   }
 });
 

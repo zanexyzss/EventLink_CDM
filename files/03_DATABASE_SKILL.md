@@ -13,33 +13,35 @@ You create the complete database layer. Use `better-sqlite3` (synchronous, perfe
 ## FILES YOU MUST CREATE
 
 ### `electron/server/db/database.js`
+
 ```javascript
-const Database = require('better-sqlite3');
-const path = require('path');
-const { app } = require('electron');
-const fs = require('fs');
+const Database = require("better-sqlite3");
+const path = require("path");
+const { app } = require("electron");
+const fs = require("fs");
 
 let db;
 
 function getDbPath() {
   // In production, store in userData; in dev, use project root
-  const isDev = process.env.NODE_ENV === 'development';
-  if (isDev) return path.join(__dirname, '../../../eventlink.db');
-  return path.join(app.getPath('userData'), 'eventlink.db');
+  const isDev = process.env.NODE_ENV === "development";
+  if (isDev) return path.join(__dirname, "../../../eventlink.db");
+  return path.join(app.getPath("userData"), "eventlink.db");
 }
 
 function initDatabase() {
   const dbPath = getDbPath();
   db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
+  db.pragma("journal_mode = WAL");
+  db.pragma("foreign_keys = ON");
   runMigrations();
   seedDefaults();
   return db;
 }
 
 function getDb() {
-  if (!db) throw new Error('Database not initialized. Call initDatabase() first.');
+  if (!db)
+    throw new Error("Database not initialized. Call initDatabase() first.");
   return db;
 }
 
@@ -119,26 +121,32 @@ function runMigrations() {
 }
 
 function seedDefaults() {
-  const bcrypt = require('bcryptjs');
+  const bcrypt = require("bcryptjs");
 
   // Seed default admin if not exists
-  const admin = db.prepare('SELECT id FROM users WHERE email = ?').get('admin@eventlink.cdm');
+  const admin = db
+    .prepare("SELECT id FROM users WHERE email = ?")
+    .get("admin@gmail.com");
   if (!admin) {
-    const hash = bcrypt.hashSync('Admin@1234', 10);
-    db.prepare(`
+    const hash = bcrypt.hashSync("Admin@1234", 10);
+    db.prepare(
+      `
       INSERT INTO users (full_name, email, password_hash, role, student_id)
       VALUES (?, ?, ?, 'admin', 'ADMIN-001')
-    `).run('System Administrator', 'admin@eventlink.cdm', hash);
+    `,
+    ).run("Admin", "admin@gmail.com", hash);
   }
 
   // Seed default settings
   const defaults = {
-    'app_name': 'EVENTLINK CDM',
-    'institution_name': 'CDM',
-    'email_configured': '0',
-    'certificate_template': 'default'
+    app_name: "EVENTLINK CDM",
+    institution_name: "CDM",
+    email_configured: "0",
+    certificate_template: "default",
   };
-  const upsert = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
+  const upsert = db.prepare(
+    "INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
+  );
   for (const [key, value] of Object.entries(defaults)) {
     upsert.run(key, value);
   }
@@ -150,27 +158,45 @@ module.exports = { initDatabase, getDb };
 ## QUERY HELPERS TO PROVIDE (in `electron/server/db/queries.js`)
 
 Provide these ready-made query functions:
+
 ```javascript
 // users
-getAllUsers(), getUserById(id), getUserByEmail(email), createUser(data), updateUser(id, data)
+(getAllUsers(),
+  getUserById(id),
+  getUserByEmail(email),
+  createUser(data),
+  updateUser(id, data));
 
 // events
-getAllEvents(filters), getEventById(id), createEvent(data), updateEvent(id, data), deleteEvent(id)
+(getAllEvents(filters),
+  getEventById(id),
+  createEvent(data),
+  updateEvent(id, data),
+  deleteEvent(id));
 
 // registrations
-getEventRegistrations(eventId), getUserRegistrations(userId), createRegistration(eventId, userId), cancelRegistration(eventId, userId), getRegistrationCount(eventId)
+(getEventRegistrations(eventId),
+  getUserRegistrations(userId),
+  createRegistration(eventId, userId),
+  cancelRegistration(eventId, userId),
+  getRegistrationCount(eventId));
 
 // attendance
-getEventAttendance(eventId), markAttendance(eventId, userId, method), getAttendanceStatus(eventId, userId)
+(getEventAttendance(eventId),
+  markAttendance(eventId, userId, method),
+  getAttendanceStatus(eventId, userId));
 
 // certificates
-getCertificatesByEvent(eventId), createCertificate(data), markCertificatesSent(eventId)
+(getCertificatesByEvent(eventId),
+  createCertificate(data),
+  markCertificatesSent(eventId));
 
 // settings
-getSetting(key), setSetting(key, value), getAllSettings()
+(getSetting(key), setSetting(key, value), getAllSettings());
 ```
 
 ## RULES
+
 - Always use prepared statements — never string interpolation in SQL
 - Return plain objects, not SQLite row objects (use `{...row}`)
 - Wrap mutations in transactions when inserting multiple rows
@@ -178,12 +204,14 @@ getSetting(key), setSetting(key, value), getAllSettings()
 - `getDb()` must be called at the top of each query function
 
 ## VALIDATION CHECKLIST
+
 - [ ] All 7 tables created
 - [ ] Foreign keys enforced (`PRAGMA foreign_keys = ON`)
-- [ ] Default admin seeded (email: admin@eventlink.cdm, pass: Admin@1234)
+- [ ] Default admin seeded (email: admin@gmail.com, pass: Admin@1234)
 - [ ] Default settings seeded
 - [ ] All query helpers exported and functional
 
 ## HANDOFF
+
 Signal: **AUTH_AGENT and BACKEND_AGENT may now begin.**
 Export: `getDb`, `initDatabase`, all query helpers

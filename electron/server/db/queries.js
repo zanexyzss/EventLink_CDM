@@ -216,14 +216,23 @@ async function getUserCertificates(userId) {
   `, [userId]);
 }
 
-async function createCertificateRecord(eventId, userId, filePath) {
+async function createCertificateRecord(eventId, userId, filePath, pdfData = null) {
   const existing = await queryOne('SELECT id FROM certificates WHERE event_id = ? AND user_id = ?', [eventId, userId]);
   if (existing) {
-    await runSql('UPDATE certificates SET file_path = ?, generated_at = CURRENT_TIMESTAMP WHERE id = ?', [filePath, existing.id]);
+    if (pdfData) {
+      await runSql('UPDATE certificates SET file_path = ?, pdf_data = ?, generated_at = CURRENT_TIMESTAMP WHERE id = ?', [filePath, pdfData, existing.id]);
+    } else {
+      await runSql('UPDATE certificates SET file_path = ?, generated_at = CURRENT_TIMESTAMP WHERE id = ?', [filePath, existing.id]);
+    }
     return existing.id;
   }
-  const result = await runSql('INSERT INTO certificates (event_id, user_id, file_path) VALUES (?, ?, ?)', [eventId, userId, filePath]);
-  return result.lastInsertRowid;
+  if (pdfData) {
+    const result = await runSql('INSERT INTO certificates (event_id, user_id, file_path, pdf_data) VALUES (?, ?, ?, ?)', [eventId, userId, filePath, pdfData]);
+    return result.lastInsertRowid;
+  } else {
+    const result = await runSql('INSERT INTO certificates (event_id, user_id, file_path) VALUES (?, ?, ?)', [eventId, userId, filePath]);
+    return result.lastInsertRowid;
+  }
 }
 
 async function updateCertificateEmailStatus(certId, status) {

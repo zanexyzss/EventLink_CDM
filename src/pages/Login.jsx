@@ -2,26 +2,35 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import logoImg from '../assets/logo.png';
 import bgImg from '../assets/bg.png';
 
+const schema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required')
+});
+
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuthStore();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    resolver: zodResolver(schema),
+  });
+
+  const onSubmit = async (data) => {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      await login(data.email, data.password);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');
@@ -50,8 +59,6 @@ export default function Login() {
           <div className="mt-12 flex items-center justify-center gap-8 text-brand-300 text-sm">
             <div className="text-center"><div className="text-3xl font-bold text-white mb-1">100+</div>Events</div>
             <div className="w-px h-12 bg-brand-700" />
-            <div className="text-center"><div className="text-3xl font-bold text-white mb-1">5K+</div>Students</div>
-            <div className="w-px h-12 bg-brand-700" />
             <div className="text-center"><div className="text-3xl font-bold text-white mb-1">98%</div>Satisfaction</div>
           </div>
         </div>
@@ -79,15 +86,14 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <Input
               label="Email Address"
               type="email"
               icon={Mail}
               placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+              error={errors.email?.message}
+              {...register('email')}
             />
 
             <div className="relative">
@@ -96,9 +102,8 @@ export default function Login() {
                 type={showPassword ? 'text' : 'password'}
                 icon={Lock}
                 placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+                error={errors.password?.message}
+                {...register('password')}
               />
               <button
                 type="button"
@@ -123,7 +128,7 @@ export default function Login() {
 
           <div className="mt-8 p-4 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
             <p className="font-semibold mb-1">Demo Admin Credentials:</p>
-            <p>Email: admin@eventlink.cdm</p>
+            <p>Email: admin@gmail.com</p>
             <p>Password: Admin@1234</p>
           </div>
         </div>

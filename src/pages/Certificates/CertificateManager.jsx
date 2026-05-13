@@ -6,7 +6,8 @@ import { safeFormat } from '../../lib/dateUtils';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Spinner from '../../components/ui/Spinner';
-import { Award, Send, Download, Users, CheckCircle, FileText, Mail, RefreshCw, Loader2, ArrowLeft, Sparkles } from 'lucide-react';
+import Modal from '../../components/ui/Modal';
+import { Award, Send, Download, Users, CheckCircle, FileText, Mail, RefreshCw, Loader2, ArrowLeft, Sparkles, Edit3 } from 'lucide-react';
 
 export default function CertificateManager() {
   const { id } = useParams();
@@ -19,6 +20,11 @@ export default function CertificateManager() {
   const [generating, setGenerating] = useState(false);
   const [sending, setSending] = useState(false);
   const [singleAction, setSingleAction] = useState({});
+
+  // Edit metadata modal
+  const [editTarget, setEditTarget] = useState(null);
+  const [editMeta, setEditMeta] = useState({ cert_title: '', speaker_name: '', speaker_title: '', cert_name_override: '' });
+  const [savingMeta, setSavingMeta] = useState(false);
 
   useEffect(() => { loadData(); }, [id]);
 
@@ -65,9 +71,7 @@ export default function CertificateManager() {
     setSending(true);
     try {
       toast.info('Starting bulk generation and dispatch...');
-      // 1. Generate All
       const genRes = await api.post(`/certificates/${id}/generate`);
-      // 2. Send All
       const sendRes = await api.post(`/certificates/${id}/send`);
       toast.success(`Success! Generated ${genRes.data.data.generated} and emailed ${sendRes.data.data.sent} certificates! 🏆📧`);
       loadData();
@@ -128,6 +132,34 @@ export default function CertificateManager() {
     }
   };
 
+  // ─── Edit Metadata ──────────────────────────────
+  const openEditMeta = (att) => {
+    const cert = certMap[att.user_id];
+    setEditTarget(att);
+    setEditMeta({
+      cert_title: cert?.cert_title || '',
+      speaker_name: cert?.speaker_name || '',
+      speaker_title: cert?.speaker_title || '',
+      cert_name_override: cert?.cert_name_override || att.full_name || '',
+    });
+  };
+
+  const handleSaveMeta = async () => {
+    if (!editTarget) return;
+    setSavingMeta(true);
+    try {
+      await api.put(`/certificates/${id}/metadata`, {
+        user_id: editTarget.user_id,
+        ...editMeta,
+      });
+      toast.success('Certificate updated & regenerated! ✅');
+      setEditTarget(null);
+      loadData();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to update');
+    } finally { setSavingMeta(false); }
+  };
+
   if (loading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
   if (!event) return <div className="text-center py-20 text-gray-500">Event not found</div>;
 
@@ -142,11 +174,17 @@ export default function CertificateManager() {
     certificate: certMap[att.user_id] || null,
     hasCert: !!certMap[att.user_id],
     emailed: certMap[att.user_id]?.sent_via_email ? true : false,
+    verificationStatus: certMap[att.user_id]?.verification_status || 'pending',
   }));
 
   const totalAttendees = attendeeList.length;
   const totalGenerated = attendeeList.filter(a => a.hasCert).length;
   const totalEmailed = attendeeList.filter(a => a.emailed).length;
+
+  const verificationBadge = (status) => {
+    if (status === 'verified') return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">✅ Verified</span>;
+    return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">⏳ Pending</span>;
+  };
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -247,7 +285,7 @@ export default function CertificateManager() {
         {totalGenerated > 0 && totalGenerated === totalAttendees && (
           <div className="mt-4 p-4 bg-green-50 border border-green-100 rounded-xl flex items-center gap-2">
             <CheckCircle size={18} className="text-green-600" />
-            <p className="text-sm text-green-700">All certificates have been generated! You can now email or download them individually.</p>
+            <p className="text-sm text-green-700">All certificates have been generated! You can now edit details, email, or download them individually.</p>
           </div>
         )}
       </div>
@@ -266,6 +304,7 @@ export default function CertificateManager() {
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Student</th>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Student ID</th>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Certificate</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Verification</th>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Emailed</th>
                 <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Actions</th>
               </tr>
@@ -296,6 +335,9 @@ export default function CertificateManager() {
                     )}
                   </td>
                   <td className="px-6 py-4">
+                    {att.hasCert ? verificationBadge(att.verificationStatus) : <span className="text-xs text-gray-300">—</span>}
+                  </td>
+                  <td className="px-6 py-4">
                     {att.emailed ? (
                       <Badge variant="confirmed">Sent</Badge>
                     ) : (
@@ -304,6 +346,16 @@ export default function CertificateManager() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1.5 justify-end">
+                      {/* Edit Metadata */}
+                      <button
+                        onClick={() => openEditMeta(att)}
+                        disabled={!att.hasCert}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Edit certificate details"
+                      >
+                        <Edit3 size={12} /> Edit
+                      </button>
+
                       {/* Generate */}
                       <button
                         onClick={() => handleSingleGenerate(att.user_id)}
@@ -348,7 +400,7 @@ export default function CertificateManager() {
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-16 text-center">
+                  <td colSpan={6} className="px-6 py-16 text-center">
                     <Award size={48} className="mx-auto text-gray-300 mb-4" />
                     <h3 className="text-lg font-semibold text-gray-600 mb-1">No attendees yet</h3>
                     <p className="text-gray-400 text-sm mb-4">Mark attendance first, then generate certificates.</p>
@@ -362,6 +414,77 @@ export default function CertificateManager() {
           </table>
         </div>
       </div>
+
+      {/* ─── Edit Certificate Metadata Modal ─── */}
+      <Modal isOpen={!!editTarget} onClose={() => setEditTarget(null)} title="Edit Certificate Details" size="lg">
+        {editTarget && (
+          <div className="space-y-5">
+            <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+              <p className="text-sm text-indigo-700">
+                Editing certificate for <strong>{editTarget.full_name}</strong>. After saving, the PDF will be regenerated and the student will need to verify their name before downloading.
+              </p>
+            </div>
+
+            {/* Certificate Title */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">Certificate Title</label>
+              <input
+                type="text"
+                value={editMeta.cert_title}
+                onChange={(e) => setEditMeta({ ...editMeta, cert_title: e.target.value })}
+                placeholder="e.g. CERTIFICATE OF PARTICIPATION"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              />
+              <p className="text-xs text-gray-400">Leave blank to use the default "CERTIFICATE OF PARTICIPATION"</p>
+            </div>
+
+            {/* Name on Certificate */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">Name on Certificate</label>
+              <input
+                type="text"
+                value={editMeta.cert_name_override}
+                onChange={(e) => setEditMeta({ ...editMeta, cert_name_override: e.target.value })}
+                placeholder={editTarget.full_name}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Speaker Name */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">Speaker / Signatory Name</label>
+                <input
+                  type="text"
+                  value={editMeta.speaker_name}
+                  onChange={(e) => setEditMeta({ ...editMeta, speaker_name: e.target.value })}
+                  placeholder="e.g. Dr. Juan Dela Cruz"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                />
+              </div>
+
+              {/* Speaker Title */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">Speaker / Signatory Title</label>
+                <input
+                  type="text"
+                  value={editMeta.speaker_title}
+                  onChange={(e) => setEditMeta({ ...editMeta, speaker_title: e.target.value })}
+                  placeholder="e.g. Dean, Institute of Computing Studies"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end pt-2">
+              <Button variant="ghost" onClick={() => setEditTarget(null)}>Cancel</Button>
+              <Button onClick={handleSaveMeta} loading={savingMeta}>
+                Save & Regenerate
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

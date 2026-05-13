@@ -8,12 +8,13 @@ import { User, Mail, Lock, GraduationCap, Building2, Hash } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import logoImg from '../assets/logo.png';
+import { CDM_DEPARTMENTS } from '../lib/departments';
 
 const schema = z.object({
   full_name: z.string().min(2, 'Full name is required'),
   email: z.string().email('Invalid email address'),
   student_id: z.string().optional(),
-  department: z.string().optional(),
+  department: z.string().min(1, 'Please select your program'),
   year_level: z.string().optional(),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirm_password: z.string(),
@@ -70,7 +71,30 @@ export default function RegisterPage() {
             <Input label="Student ID" icon={Hash} placeholder="2024-0001 (optional)" error={errors.student_id?.message} {...register('student_id')} />
 
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Department" icon={Building2} placeholder="e.g. BSIT" error={errors.department?.message} {...register('department')} />
+              {/* Department/Program Dropdown */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">Department / Program</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Building2 size={18} className="text-gray-400" />
+                  </div>
+                  <select
+                    {...register('department')}
+                    className={`block w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition-all duration-200 hover:border-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none pl-10 appearance-none ${errors.department ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300'}`}
+                  >
+                    <option value="">Select program...</option>
+                    {CDM_DEPARTMENTS.map((dept) => (
+                      <optgroup key={dept.institute} label={dept.institute}>
+                        {dept.programs.map((prog) => (
+                          <option key={prog} value={prog}>{prog}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+                {errors.department && <p className="text-xs text-red-500 mt-1">{errors.department.message}</p>}
+              </div>
+
               <Input label="Year Level" icon={GraduationCap} placeholder="e.g. 3" error={errors.year_level?.message} {...register('year_level')} />
             </div>
 

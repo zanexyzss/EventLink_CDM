@@ -1,53 +1,51 @@
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 const { runSql } = require('../db/database');
 require('dotenv').config();
 
-function getResendClient() {
-  return new Resend(process.env.RESEND_API_KEY || '');
+function getTransporter() {
+  return nodemailer.createTransport({
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.EMAIL_PORT || '587'),
+    secure: process.env.EMAIL_PORT === '465',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
 }
 
 async function verifyTransporter() {
-  if (!process.env.RESEND_API_KEY) {
-    console.error('[EMAIL] RESEND_API_KEY not set — email sending disabled');
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.error('[EMAIL] EMAIL_USER or EMAIL_PASS not set — email sending disabled');
     return false;
   }
-  console.log('[EMAIL] Resend API configured successfully');
-  return true;
+  try {
+    const transporter = getTransporter();
+    await transporter.verify();
+    console.log('[EMAIL] Nodemailer SMTP configured successfully');
+    return true;
+  } catch (err) {
+    console.error('[EMAIL] SMTP verification failed:', err.message);
+    return false;
+  }
 }
 
 async function sendEmail({ to, subject, html, attachments = [], type = 'general' }) {
-  const resend = getResendClient();
-  const fromAddress = process.env.EMAIL_FROM || 'EventLink CDM <onboarding@resend.dev>';
+  const transporter = getTransporter();
+  const fromAddress = process.env.EMAIL_FROM || `"EVENTLINK CDM" <${process.env.EMAIL_USER}>`;
 
   try {
-    // Convert nodemailer-style attachments to Resend format
-    const resendAttachments = [];
-    for (const att of attachments) {
-      if (att.path) {
-        const fs = require('fs');
-        const path = require('path');
-        const absPath = path.resolve(att.path);
-        if (fs.existsSync(absPath)) {
-          const content = fs.readFileSync(absPath);
-          resendAttachments.push({
-            filename: att.filename || path.basename(absPath),
-            content: content
-          });
-        }
-      }
-    }
-
-    const data = await resend.emails.send({
+    const info = await transporter.sendMail({
       from: fromAddress,
-      to: [to],
+      to,
       subject,
       html,
-      attachments: resendAttachments
+      attachments
     });
 
     await runSql('INSERT INTO email_log (recipient_email, subject, type, status) VALUES (?,?,?,?)', [to, subject, type, 'sent']);
-    console.log(`[EMAIL] Success: ${data.id} | Sent to ${to}`);
-    return { success: true, messageId: data.id };
+    console.log(`[EMAIL] Success: ${info.messageId} | Sent to ${to}`);
+    return { success: true, messageId: info.messageId };
   } catch (err) {
     await runSql('INSERT INTO email_log (recipient_email, subject, type, status) VALUES (?,?,?,?)', [to, subject, type, 'failed']);
     console.error('[EMAIL ERROR]', err);
@@ -105,32 +103,26 @@ async function sendRegistrationConfirmation(user, event, qrCodePath) {
   });
 }
 
-async function sendCertificate(user, event, certificatePath) {
+async function sendCertificate(user, event, certificatePath, pdfData = null) {
   const safeName = user.full_name.replace(/ /g, '_');
-  const fs = require('fs');
-  const pathModule = require('path');
+  let attachment = {};
 
-  const absolutePath = pathModule.resolve(certificatePath);
-  console.log(`[CERT EMAIL] Attempting to send certificate to ${user.email}`);
-  console.log(`[CERT EMAIL] File path: ${absolutePath}`);
-  console.log(`[CERT EMAIL] File exists: ${fs.existsSync(absolutePath)}`);
-
-  if (!fs.existsSync(absolutePath)) {
-    console.error(`[CERT EMAIL] ERROR: Certificate PDF not found at ${absolutePath}`);
-    return { success: false, error: `Certificate file not found: ${absolutePath}` };
-  }
-
-  const fileStats = fs.statSync(absolutePath);
-  console.log(`[CERT EMAIL] File size: ${fileStats.size} bytes`);
-
-  if (fileStats.size === 0) {
-    console.error(`[CERT EMAIL] ERROR: Certificate PDF is empty (0 bytes)`);
-    return { success: false, error: 'Certificate file is empty' };
+  if (pdfData) {
+    attachment = { filename: `Certificate_${safeName}.pdf`, content: pdfData };
+  } else {
+    const fs = require('fs');
+    const pathModule = require('path');
+    const absolutePath = pathModule.resolve(certificatePath);
+    if (!fs.existsSync(absolutePath)) {
+      console.error(`[CERT EMAIL] ERROR: Certificate PDF not found at ${absolutePath}`);
+      return { success: false, error: `Certificate file not found: ${absolutePath}` };
+    }
+    attachment = { filename: `Certificate_${safeName}.pdf`, path: absolutePath };
   }
 
   return sendEmail({
     to: user.email, subject: `🏆 Your Certificate — ${event.title} | EVENTLINK CDM`, type: 'certificate',
-    attachments: [{ filename: `Certificate_${safeName}.pdf`, path: absolutePath }],
+    attachments: [attachment],
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
         <div style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4338ca 100%);color:white;padding:40px 32px;text-align:center">
@@ -173,9 +165,9 @@ async function bulkSendAnnouncement(users, event) {
 async function bulkSendCertificates(attendees) {
   console.log(`[EMAIL] Starting bulk certificate dispatch for ${attendees.length} attendees...`);
   const results = await Promise.allSettled(
-    attendees.map(async ({ user, event, certificatePath }) => {
+    attendees.map(async ({ user, event, certificatePath, pdfData }) => {
       try {
-        const res = await sendCertificate(user, event, certificatePath);
+        const res = await sendCertificate(user, event, certificatePath, pdfData);
         if (res.success) {
           console.log(`[EMAIL] Certificate successfully sent to ${user.email}`);
         } else {

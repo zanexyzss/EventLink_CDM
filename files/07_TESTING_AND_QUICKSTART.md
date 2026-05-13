@@ -17,6 +17,7 @@ For each module, read the code and verify all items. If something is broken, FIX
 ---
 
 ## CHECKLIST 1: ARCHITECTURE
+
 - [ ] `package.json` has all required dependencies (no missing packages)
 - [ ] All folders from ARCHITECT_AGENT exist
 - [ ] `.env.example` has all required keys
@@ -24,14 +25,16 @@ For each module, read the code and verify all items. If something is broken, FIX
 - [ ] `vite.config.js` and `tailwind.config.js` are correct
 
 ## CHECKLIST 2: DATABASE
+
 - [ ] `database.js` exports `initDatabase` and `getDb`
 - [ ] All 7 tables created in schema
 - [ ] `PRAGMA foreign_keys = ON` set
-- [ ] Default admin user seeded (email: admin@eventlink.cdm)
+- [ ] Default admin user seeded (email: admin@gmail.com)
 - [ ] `queries.js` exports all required functions
 - [ ] No raw SQL string interpolation (all prepared statements)
 
 ## CHECKLIST 3: AUTHENTICATION
+
 - [ ] POST `/api/auth/login` returns `{token, user}` (no password_hash)
 - [ ] POST `/api/auth/register` validates required fields
 - [ ] GET `/api/auth/me` requires valid token
@@ -40,6 +43,7 @@ For each module, read the code and verify all items. If something is broken, FIX
 - [ ] Zustand auth store persists token to localStorage
 
 ## CHECKLIST 4: BACKEND ROUTES
+
 - [ ] All 8 route files exist and are mounted in `app.js`
 - [ ] `GET /api/events` returns list without crashing
 - [ ] `POST /api/events` validates required fields (title, event_date)
@@ -49,12 +53,14 @@ For each module, read the code and verify all items. If something is broken, FIX
 - [ ] All routes return proper HTTP status codes
 
 ## CHECKLIST 5: EMAIL SERVICE
+
 - [ ] `emailService.js` exports: `sendEventAnnouncement`, `sendRegistrationConfirmation`, `sendCertificate`, `sendEventReminder`, `bulkSendAnnouncement`, `bulkSendCertificates`
 - [ ] Failed emails are logged in `email_log` table (don't crash the request)
 - [ ] Email HTML templates are complete (no broken HTML tags)
 - [ ] Attachments are only added when `qrCodePath`/`certificatePath` exists
 
 ## CHECKLIST 6: CERTIFICATES
+
 - [ ] `certificateService.js` exports `generateCertificate` and `bulkGenerateCertificates`
 - [ ] Output directory `assets/certificates/` is created if missing
 - [ ] PDF is generated at correct path
@@ -62,12 +68,14 @@ For each module, read the code and verify all items. If something is broken, FIX
 - [ ] Puppeteer uses `{ headless: 'new' }` (not deprecated `true`)
 
 ## CHECKLIST 7: QR CODES
+
 - [ ] `qrService.js` exports `generateRegistrationQR`, `generateQRDataURL`, `parseQRPayload`
 - [ ] Output directory `assets/qrcodes/` is created if missing
 - [ ] QR payload includes `{userId, eventId, type}`
 - [ ] `parseQRPayload` handles malformed input gracefully (try/catch)
 
 ## CHECKLIST 8: FRONTEND
+
 - [ ] `App.jsx` has all 10 routes defined
 - [ ] `ProtectedRoute` redirects unauthenticated users to `/login`
 - [ ] Role-based route protection works (student → 403 on admin routes)
@@ -78,6 +86,7 @@ For each module, read the code and verify all items. If something is broken, FIX
 - [ ] All 7 UI components exist (`Button`, `Input`, `Modal`, `Badge`, `Toast`, `EventCard`, `Spinner`)
 
 ## CHECKLIST 9: ELECTRON
+
 - [ ] `main.js` calls `initDatabase()` before `createWindow()`
 - [ ] Express server started before window loads
 - [ ] `preload.js` exposes `electronAPI` via `contextBridge`
@@ -87,6 +96,7 @@ For each module, read the code and verify all items. If something is broken, FIX
 ## CHECKLIST 10: INTEGRATION FLOWS
 
 ### Flow 1: Admin publishes event → Students receive email
+
 ```
 1. Admin POST /api/events → {title, event_date, venue, max_slots}
 2. Admin POST /api/events/:id/open
@@ -96,6 +106,7 @@ For each module, read the code and verify all items. If something is broken, FIX
 ```
 
 ### Flow 2: Student registers → Gets QR + confirmation email
+
 ```
 1. Student POST /api/events/:id/register
 2. System calls generateRegistrationQR(userId, eventId)
@@ -105,6 +116,7 @@ For each module, read the code and verify all items. If something is broken, FIX
 ```
 
 ### Flow 3: Attendance marked → Certificate generated → Emailed
+
 ```
 1. Admin POST /api/events/:id/attendance {user_id, method: 'manual'}
 2. Admin POST /api/events/:id/certificates/generate
@@ -117,6 +129,7 @@ For each module, read the code and verify all items. If something is broken, FIX
 ## IF YOU FIND AN ERROR
 
 **DO NOT** report it and stop. Instead:
+
 1. Identify the root cause
 2. Rewrite the broken section with the fix
 3. Re-verify the checklist item
@@ -127,6 +140,7 @@ The goal: when TESTING_AGENT finishes, the user can run `npm install && npm star
 ## FINAL OUTPUT
 
 After all checklists pass, output:
+
 ```
 ╔══════════════════════════════════════════╗
 ║     EVENTLINK CDM — BUILD COMPLETE ✅    ║
@@ -138,7 +152,7 @@ After all checklists pass, output:
 ║   4. npm start                           ║
 ║                                          ║
 ║ Default admin:                           ║
-║   Email: admin@eventlink.cdm             ║
+║   Email: admin@gmail.com            ║
 ║   Pass:  Admin@1234                      ║
 ║                                          ║
 ║ Features ready:                          ║
@@ -153,6 +167,7 @@ After all checklists pass, output:
 ```
 
 ---
+
 ---
 
 # QUICK START GUIDE — HOW TO BUILD EVENTLINK CDM WITH CLAUDE
@@ -181,6 +196,7 @@ Do not stop until TESTING_AGENT outputs the BUILD COMPLETE confirmation.
 ## Method 2: Agent by Agent
 
 Run each agent separately for maximum control:
+
 ```
 "Act as ARCHITECT_AGENT for EVENTLINK CDM. Read 02_ARCHITECT_SKILL.md and produce all files it specifies."
 "Act as DATABASE_AGENT for EVENTLINK CDM. Read 03_DATABASE_SKILL.md and produce all files it specifies."
@@ -190,8 +206,9 @@ Run each agent separately for maximum control:
 ## Method 3: Parallel Agents (Advanced)
 
 After AUTH_AGENT completes, open 4 parallel Claude conversations:
+
 - Conversation A: BACKEND_AGENT
-- Conversation B: EMAIL_AGENT  
+- Conversation B: EMAIL_AGENT
 - Conversation C: CERTIFICATE_AGENT
 - Conversation D: QR_AGENT
 
@@ -202,4 +219,4 @@ Then merge outputs into the project folder, then run FRONTEND_AGENT, then ELECTR
 - Always provide `00_MASTER_OVERVIEW.md` as context in every agent conversation
 - If Claude asks to clarify — skip clarification, use master doc defaults
 - The `.env` file is the only thing the user needs to configure (email credentials)
-- Default admin credentials are always: `admin@eventlink.cdm` / `Admin@1234`
+- Default admin credentials are always: `admin@gmail.com` / `Admin@1234`

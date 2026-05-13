@@ -167,6 +167,13 @@ async function runMigrations() {
     )
   `);
 
+  await pool.query(`ALTER TABLE certificates ADD COLUMN IF NOT EXISTS pdf_data BYTEA;`);
+  await pool.query(`ALTER TABLE certificates ADD COLUMN IF NOT EXISTS cert_title VARCHAR(500);`);
+  await pool.query(`ALTER TABLE certificates ADD COLUMN IF NOT EXISTS speaker_name VARCHAR(255);`);
+  await pool.query(`ALTER TABLE certificates ADD COLUMN IF NOT EXISTS speaker_title VARCHAR(255);`);
+  await pool.query(`ALTER TABLE certificates ADD COLUMN IF NOT EXISTS cert_name_override VARCHAR(255);`);
+  await pool.query(`ALTER TABLE certificates ADD COLUMN IF NOT EXISTS verification_status VARCHAR(50) DEFAULT 'pending';`);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS email_log (
       id SERIAL PRIMARY KEY,
@@ -190,14 +197,14 @@ async function runMigrations() {
 
 async function seedDefaults() {
   const bcrypt = require('bcryptjs');
-  const admin = await queryOne('SELECT id FROM users WHERE email = ?', ['admin@eventlink.cdm']);
+  const admin = await queryOne('SELECT id FROM users WHERE email = ?', ['admin@gmail.com']);
   if (!admin) {
     const hash = bcrypt.hashSync('Admin@1234', 10);
     await runSql(
       'INSERT INTO users (full_name, email, password_hash, role, student_id) VALUES (?, ?, ?, ?, ?)',
-      ['System Administrator', 'admin@eventlink.cdm', hash, 'admin', 'ADMIN-001']
+      ['Admin', 'admin@gmail.com', hash, 'admin', 'ADMIN-001']
     );
-    console.log('[DB] Default admin seeded: admin@eventlink.cdm / Admin@1234');
+    console.log('[DB] Default admin seeded: admin@gmail.com / Admin@1234');
   }
 
   const defaults = [

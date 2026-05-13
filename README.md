@@ -8,7 +8,7 @@ EventLink CDM is a comprehensive, full-stack event and certificate management pl
 - **Attendance Tracking**: Real-time attendance check-ins using manual overrides, dynamically generated PINs, and personalized QR codes.
 - **Automated Certificates**: Generate high-quality, customized PDF certificates for all attendees automatically.
 - **Email Integration**: Bulk email certificates directly to attendees using integrated SMTP services.
-- **Admin Dashboard**: Comprehensive analytics, reporting, and CSV exports for event organizers and system administrators.
+- **Admin Dashboard**: Comprehensive analytics, reporting, and CSV exports for event organizers and Admins.
 - **Role-Based Access**: Secure login system with distinct privileges for Administrators, Organizers, and Students.
 
 ## 💻 Tech Stack
@@ -23,6 +23,7 @@ EventLink CDM is a comprehensive, full-stack event and certificate management pl
 - **Email Service**: Nodemailer
 
 ## 🛠️ Recent Major Updates
+
 - **v2.0 Database Migration**: Successfully migrated the embedded SQLite database engine to an asynchronous, robust MySQL/XAMPP architecture capable of handling higher concurrent loads.
 - **Async Refactoring**: Completely overhauled the backend API routes and queries to utilize full asynchronous database operations (`async/await`) for improved reliability and non-blocking performance.
 - **Automated Provisioning**: The backend now automatically initializes the `eventlink_cdm` database schema and seeds default administrator accounts if they do not exist.
@@ -50,4 +51,4 @@ EventLink CDM is a comprehensive, full-stack event and certificate management pl
    ```bash
    npm run dev:full
    ```
-   *This command leverages concurrently to start both the Vite frontend on port 5173 and the Express API on port 3001 simultaneously.*
+   _This command leverages concurrently to start both the Vite frontend on port 5173 and the Express API on port 3001 simultaneously._
