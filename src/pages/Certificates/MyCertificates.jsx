@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useToastStore } from '../../store/toastStore';
 import api from '../../lib/api';
@@ -19,8 +20,23 @@ export default function MyCertificates() {
   const [verifyTarget, setVerifyTarget] = useState(null);
   const [verifyName, setVerifyName] = useState('');
   const [verifying, setVerifying] = useState(false);
+  const [searchParams] = useSearchParams();
+  const autoVerifyHandled = useRef(false);
 
   useEffect(() => { loadCertificates(); }, []);
+
+  // Auto-open verify modal when redirected from email with ?verify=EVENT_ID
+  useEffect(() => {
+    if (autoVerifyHandled.current) return;
+    const verifyEventId = searchParams.get('verify');
+    if (verifyEventId && certificates.length > 0) {
+      const cert = certificates.find(c => c.event_id === parseInt(verifyEventId));
+      if (cert && cert.verification_status !== 'verified') {
+        openVerify(cert);
+        autoVerifyHandled.current = true;
+      }
+    }
+  }, [certificates, searchParams]);
 
   const loadCertificates = async () => {
     try {

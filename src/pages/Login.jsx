@@ -66,11 +66,6 @@ export default function Login() {
           <p className="text-brand-200 text-lg max-w-sm mx-auto leading-relaxed">
             Your centralized campus event management platform. Discover, register, and participate seamlessly.
           </p>
-          <div className="mt-12 flex items-center justify-center gap-8 text-brand-300 text-sm">
-            <div className="text-center"><div className="text-3xl font-bold text-white mb-1">100+</div>Events</div>
-            <div className="w-px h-12 bg-brand-700" />
-            <div className="text-center"><div className="text-3xl font-bold text-white mb-1">98%</div>Satisfaction</div>
-          </div>
         </div>
       </div>
 

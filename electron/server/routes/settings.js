@@ -54,10 +54,10 @@ router.post('/test-email', authenticateToken, requireAdmin, async (req, res) => 
               <span style="color:white;font-size:32px">✓</span>
             </div>
             <h2 style="color:#16a34a;margin:0 0 8px">Email is Working!</h2>
-            <p style="color:#64748b">This test email confirms your SMTP settings are configured correctly.</p>
+            <p style="color:#64748b">This test email confirms your Resend API is configured correctly.</p>
             <p style="color:#94a3b8;font-size:14px;margin-top:16px">
               Sent at: ${new Date().toLocaleString()}<br>
-              From: ${process.env.EMAIL_USER}
+              Via: Resend HTTP API
             </p>
           </div>
           <div style="background:#f8fafc;padding:16px;text-align:center;color:#94a3b8;font-size:12px">

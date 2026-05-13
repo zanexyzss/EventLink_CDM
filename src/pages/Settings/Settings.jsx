@@ -43,14 +43,14 @@ export default function Settings() {
     setTesting(true);
     setEmailStatus(null);
     try {
-      toast.info('Sending test email via Gmail SMTP...');
+      toast.info('Sending test email via Resend API...');
       const { data } = await api.post('/settings/test-email', {
         recipient: testEmail || undefined
       });
       toast.success(data.message || 'Test email sent! Check your inbox.');
       setEmailStatus('success');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Test email failed. Check .env SMTP credentials.');
+      toast.error(err.response?.data?.error || 'Test email failed. Check RESEND_API_KEY in environment variables.');
       setEmailStatus('failed');
     } finally { setTesting(false); }
   };
@@ -95,15 +95,14 @@ export default function Settings() {
         </h2>
         <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl mb-4">
           <p className="text-sm text-blue-700">
-            <strong>Gmail SMTP Active.</strong> Credentials are in <code className="bg-blue-100 px-1.5 py-0.5 rounded text-xs">.env</code>. To change, update EMAIL_USER and EMAIL_PASS, then restart the server.
+            <strong>Resend API Active.</strong> Emails are sent via Resend HTTP API. The API key is configured in the server environment variables on Render.
           </p>
         </div>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Input label="SMTP Host" value="smtp.gmail.com" disabled />
-            <Input label="SMTP Port" value="587" disabled />
+            <Input label="Email Provider" value="Resend (HTTP API)" disabled />
+            <Input label="Sender Address" value="onboarding@resend.dev" disabled />
           </div>
-          <Input label="Sender Email" value="zannesioson@gmail.com" disabled />
 
           <div className="border-t border-gray-100 pt-4">
             <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
@@ -132,7 +131,7 @@ export default function Settings() {
             )}
             {emailStatus === 'failed' && (
               <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-xl">
-                <p className="text-sm text-red-700">Email failed. Verify your Gmail App Password in .env and ensure 2FA is enabled on your Google account.</p>
+                <p className="text-sm text-red-700">Email failed. Verify that RESEND_API_KEY is set correctly in the Render environment variables.</p>
               </div>
             )}
           </div>
