@@ -12,15 +12,26 @@ import { CDM_DEPARTMENTS } from '../lib/departments';
 
 const schema = z.object({
   full_name: z.string()
-    .min(2, 'Full name is required')
-    .regex(/^[a-zA-ZñÑ\s]+$/, 'Only letters are allowed')
-    .refine((val) => (val.match(/ /g) || []).length <= 1, 'Maximum of 1 space allowed'),
-  email: z.string().email('Invalid email address'),
-  student_id: z.string().regex(/^\d{2}-\d{5}$/, 'Format must be 00-00000'),
-  department: z.string().min(1, 'Please select your program'),
-  year_level: z.string().regex(/^[1-4]$/, 'Year level cannot exceed 4').optional().or(z.literal('')),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirm_password: z.string(),
+    .min(1, 'Full name is required')
+    .min(2, 'Full name must be at least 2 characters')
+    .regex(/^[a-zA-ZñÑ\s]+$/, 'Full name must contain only letters (no numbers or symbols)')
+    .refine((val) => (val.match(/ /g) || []).length <= 1, 'Full name can only have 1 space (e.g. "Juan Cruz")'),
+  email: z.string()
+    .min(1, 'Email address is required')
+    .email('Please enter a valid email address (e.g. you@example.com)'),
+  student_id: z.string()
+    .min(1, 'Student ID is required')
+    .regex(/^\d{2}-\d{5}$/, 'Student ID must follow the format 00-00000 (e.g. 24-12345)'),
+  department: z.string().min(1, 'Please select your department / program'),
+  year_level: z.string()
+    .regex(/^[1-4]$/, 'Year level must be between 1 and 4')
+    .optional()
+    .or(z.literal('')),
+  password: z.string()
+    .min(1, 'Password is required')
+    .min(6, 'Password must be at least 6 characters'),
+  confirm_password: z.string()
+    .min(1, 'Please confirm your password'),
 }).refine((d) => d.password === d.confirm_password, {
   message: 'Passwords do not match',
   path: ['confirm_password'],
@@ -57,7 +68,14 @@ export default function RegisterPage() {
       await registerUser({ ...rest, year_level: year_level ? parseInt(year_level) : undefined });
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed');
+      const msg = err.response?.data?.error;
+      if (msg === 'Email already registered') {
+        setError('This email is already registered. Please use a different email or sign in.');
+      } else if (msg) {
+        setError(msg);
+      } else {
+        setError('Registration failed. Please check your connection and try again.');
+      }
     } finally {
       setLoading(false);
     }

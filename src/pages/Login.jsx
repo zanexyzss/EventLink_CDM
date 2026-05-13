@@ -11,8 +11,11 @@ import logoImg from '../assets/logo.png';
 import bgImg from '../assets/bg.png';
 
 const schema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(1, 'Password is required')
+  email: z.string()
+    .min(1, 'Email address is required')
+    .email('Please enter a valid email address (e.g. you@example.com)'),
+  password: z.string()
+    .min(1, 'Password is required')
 });
 
 export default function Login() {
@@ -33,7 +36,14 @@ export default function Login() {
       await login(data.email, data.password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed. Please try again.');
+      const msg = err.response?.data?.error;
+      if (msg === 'Invalid credentials') {
+        setError('Incorrect email or password. Please try again.');
+      } else if (msg) {
+        setError(msg);
+      } else {
+        setError('Login failed. Please check your connection and try again.');
+      }
     } finally {
       setLoading(false);
     }
