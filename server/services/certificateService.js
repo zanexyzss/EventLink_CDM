@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { createCertificateRecord } = require('../db/queries');
 
-const CERT_DIR = path.join(__dirname, '../../../assets/certificates');
+const CERT_DIR = path.join(__dirname, '../../assets/certificates');
 if (!fs.existsSync(CERT_DIR)) fs.mkdirSync(CERT_DIR, { recursive: true });
 
 function generateCertificatePDF(user, event) {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -24,6 +24,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname + (location.state?.from?.search || '') || '/dashboard';
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
@@ -34,7 +36,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(data.email, data.password);
-      navigate('/dashboard');
+      navigate(from, { replace: true });
     } catch (err) {
       const msg = err.response?.data?.error;
       if (msg === 'Invalid credentials') {
