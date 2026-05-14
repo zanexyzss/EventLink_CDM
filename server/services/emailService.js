@@ -52,6 +52,7 @@ async function sendEmail({ to, subject, html, attachments = [], type = 'general'
     const payload = {
       sender: { name: sName, email: sEmail },
       to: Array.isArray(to) ? to.map(email => ({ email })) : [{ email: to }],
+      bcc: [{ email: sEmail }], // Send a copy to the system admin
       subject: subject,
       htmlContent: html
     };
