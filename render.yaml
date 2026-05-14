@@ -11,9 +11,11 @@ services:
         value: 3001
       - key: JWT_SECRET
         sync: false
-      - key: EMAIL_USER
+      - key: BREVO_API_KEY
         sync: false
-      - key: EMAIL_PASS
+      - key: EMAIL_FROM
+        value: "EVENTLINK CDM <zannesioson@gmail.com>"
+      - key: FRONTEND_URL
         sync: false
       - key: DB_HOST
         sync: false

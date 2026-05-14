@@ -6,7 +6,12 @@ require('dotenv').config();
 const { initDatabase } = require('./db/database');
 
 const app = express();
-app.use(cors({ origin: '*' }));
+app.use(cors({
+  origin: [
+    process.env.FRONTEND_URL || 'https://event-link-cdm.vercel.app',
+    'http://localhost:5173'
+  ]
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../../assets/uploads')));
@@ -27,7 +32,7 @@ async function startServer() {
 
   const {
     getEventRegistrations, createRegistration, cancelRegistration,
-    getRegistrationCount, getRegistration, getEventById, getUserById, updateRegistrationQR
+    getRegistrationCount, getRegistration, getEventById, getUserById, updateRegistrationQR, updateRegistrationQRData
   } = require('./db/queries');
 
   // GET /api/events/:id/registrations
@@ -70,12 +75,12 @@ async function startServer() {
       let registration = await getRegistration(eventId, userId) || {};
 
       // Generate QR code (non-blocking)
-      let qrPath = null;
+      let qrData = null;
       try {
         const { generateRegistrationQR } = require('./services/qrService');
-        qrPath = await generateRegistrationQR(userId, eventId);
-        updateRegistrationQR(eventId, userId, qrPath);
-        registration.qr_code_path = qrPath;
+        qrData = await generateRegistrationQR(userId, eventId);
+        updateRegistrationQRData(eventId, userId, qrData);
+        registration.qr_code_data = qrData;
       } catch (qrErr) {
         console.error('[QR] Generation error:', qrErr.message);
       }
@@ -85,7 +90,7 @@ async function startServer() {
         const { sendRegistrationConfirmation } = require('./services/emailService');
         const user = await getUserById(userId);
         if (user) {
-          sendRegistrationConfirmation(user, event, qrPath).catch(e => console.error('[EMAIL]', e.message));
+          sendRegistrationConfirmation(user, event, qrData).catch(e => console.error('[EMAIL]', e.message));
         }
       } catch (emailErr) {
         console.error('[EMAIL] Confirmation error:', emailErr.message);

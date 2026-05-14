@@ -18,6 +18,8 @@ import ManageUsers from './pages/Admin/ManageUsers';
 import Reports from './pages/Admin/Reports';
 import Settings from './pages/Settings/Settings';
 import Layout from './components/Layout';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 export default function App() {
   const { restoreToken } = useAuthStore();
@@ -28,6 +30,8 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route index element={<Navigate to="/dashboard" />} />
           <Route path="dashboard" element={<Dashboard />} />

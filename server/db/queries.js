@@ -163,8 +163,18 @@ async function getRegistration(eventId, userId) {
   return await queryOne('SELECT * FROM registrations WHERE event_id = ? AND user_id = ?', [eventId, userId]);
 }
 
-async function updateRegistrationQR(eventId, userId, qrPath) {
-  return await runSql('UPDATE registrations SET qr_code_path = ? WHERE event_id = ? AND user_id = ?', [qrPath, eventId, userId]);
+async function updateRegistrationQR(eventId, userId, qrCodePath) {
+  return runSql(
+    'UPDATE registrations SET qr_code_path = ? WHERE event_id = ? AND user_id = ?',
+    [qrCodePath, eventId, userId]
+  );
+}
+
+async function updateRegistrationQRData(eventId, userId, qrCodeData) {
+  return runSql(
+    'UPDATE registrations SET qr_code_data = ? WHERE event_id = ? AND user_id = ?',
+    [qrCodeData, eventId, userId]
+  );
 }
 
 // ─── ATTENDANCE ─────────────────────────────────────────────
@@ -264,7 +274,7 @@ module.exports = {
   getAllUsers, getUserById, getUserByEmail, createUser, updateUser, deleteUser,
   getDashboardStats, getAllEvents, getEventById, createEvent, updateEvent, deleteEvent,
   getEventRegistrations, getUserRegistrations, createRegistration, cancelRegistration,
-  getRegistrationCount, getRegistration, updateRegistrationQR,
+  getRegistrationCount, getRegistration, updateRegistrationQR, updateRegistrationQRData,
   getEventAttendance, markAttendance, getAttendanceStatus, getAttendanceCount,
   getEventCertificates, getUserCertificates, createCertificateRecord, updateCertificateEmailStatus, getCertificate,
   getSetting, setSetting, getAllSettings

@@ -173,6 +173,7 @@ async function runMigrations() {
   await pool.query(`ALTER TABLE certificates ADD COLUMN IF NOT EXISTS speaker_title VARCHAR(255);`);
   await pool.query(`ALTER TABLE certificates ADD COLUMN IF NOT EXISTS cert_name_override VARCHAR(255);`);
   await pool.query(`ALTER TABLE certificates ADD COLUMN IF NOT EXISTS verification_status VARCHAR(50) DEFAULT 'pending';`);
+  await pool.query(`ALTER TABLE registrations ADD COLUMN IF NOT EXISTS qr_code_data TEXT;`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS email_log (
@@ -182,6 +183,16 @@ async function runMigrations() {
       type VARCHAR(255),
       sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       status VARCHAR(50) DEFAULT 'sent'
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id SERIAL PRIMARY KEY,
+      user_id INT REFERENCES users(id) ON DELETE CASCADE,
+      token VARCHAR(255) UNIQUE NOT NULL,
+      expires_at TIMESTAMP NOT NULL,
+      used SMALLINT DEFAULT 0
     )
   `);
 

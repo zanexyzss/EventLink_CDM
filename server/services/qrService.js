@@ -7,17 +7,12 @@ if (!fs.existsSync(QR_DIR)) fs.mkdirSync(QR_DIR, { recursive: true });
 
 async function generateRegistrationQR(userId, eventId) {
   const payload = JSON.stringify({ userId, eventId, type: 'registration', ts: Date.now() });
-  const filename = `qr_${eventId}_${userId}.png`;
-  const filePath = path.join(QR_DIR, filename);
-
-  await QRCode.toFile(filePath, payload, {
+  return QRCode.toDataURL(payload, {
     errorCorrectionLevel: 'H',
     width: 400,
     margin: 2,
     color: { dark: '#1e3a8a', light: '#ffffff' }
   });
-
-  return filePath;
 }
 
 async function generateQRDataURL(userId, eventId) {

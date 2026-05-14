@@ -86,15 +86,15 @@ router.post('/test-certificate-email', authenticateToken, requireAdmin, async (r
     const { queryAll } = require('../db/database');
     
     // Find the first available certificate
-    const allCerts = queryAll("SELECT * FROM certificates WHERE file_path IS NOT NULL ORDER BY id DESC LIMIT 1", []);
+    const allCerts = await queryAll("SELECT * FROM certificates WHERE file_path IS NOT NULL ORDER BY id DESC LIMIT 1", []);
     
     if (allCerts.length === 0) {
       return res.status(400).json({ error: 'No certificates found in database. Generate one first.' });
     }
     
     const cert = allCerts[0];
-    const event = getEventById(cert.event_id);
-    const user = getUserById(cert.user_id);
+    const event = await getEventById(cert.event_id);
+    const user = await getUserById(cert.user_id);
     
     console.log('[TEST CERT EMAIL] Certificate:', { id: cert.id, file_path: cert.file_path });
     console.log('[TEST CERT EMAIL] File exists:', certFs.existsSync(cert.file_path));

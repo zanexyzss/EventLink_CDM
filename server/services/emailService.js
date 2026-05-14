@@ -1,4 +1,3 @@
-const { Resend } = require('resend');
 const fs = require('fs');
 const path = require('path');
 const { runSql } = require('../db/database');
@@ -6,58 +5,83 @@ require('dotenv').config();
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://event-link-cdm.vercel.app';
 
-function getResendClient() {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) throw new Error('RESEND_API_KEY is not set');
-  return new Resend(apiKey);
-}
-
 async function verifyTransporter() {
-  if (!process.env.RESEND_API_KEY) {
-    console.error('[EMAIL] RESEND_API_KEY not set — email sending disabled');
+  if (!process.env.BREVO_API_KEY) {
+    console.error('[EMAIL] BREVO_API_KEY not set — email sending disabled');
     return false;
   }
-  console.log('[EMAIL] Resend API configured successfully');
+  console.log('[EMAIL] Brevo API configured successfully');
   return true;
 }
 
 async function sendEmail({ to, subject, html, attachments = [], type = 'general' }) {
   try {
-    const resend = getResendClient();
+    const apiKey = process.env.BREVO_API_KEY;
+    if (!apiKey) throw new Error('BREVO_API_KEY is not set');
 
-    // Convert attachments to Resend format (requires Buffer content, not file paths)
-    const resendAttachments = attachments.map(att => {
+    const senderEmail = process.env.EMAIL_FROM || 'zannesioson@gmail.com';
+    const senderName = process.env.APP_NAME || 'EVENTLINK CDM';
+
+    // Extract email from formats like "Name <email@domain.com>" if needed, or just pass it to Brevo.
+    // Brevo requires `{ email, name }`.
+    let sEmail = senderEmail;
+    let sName = senderName;
+    const match = senderEmail.match(/^(.*?)<([^>]+)>$/);
+    if (match) {
+      sName = match[1].trim() || senderName;
+      sEmail = match[2].trim();
+    }
+
+    const brevoAttachments = attachments.map(att => {
       if (att.content && Buffer.isBuffer(att.content)) {
-        return { filename: att.filename, content: att.content };
+        return { name: att.filename, content: att.content.toString('base64') };
+      }
+      if (att.content && typeof att.content === 'string') {
+        // If it's already a base64 string or plain string
+        return { name: att.filename, content: att.content.startsWith('JVBER') ? att.content : Buffer.from(att.content).toString('base64') };
       }
       if (att.path) {
         const absolutePath = path.resolve(att.path);
         if (fs.existsSync(absolutePath)) {
-          return { filename: att.filename, content: fs.readFileSync(absolutePath) };
+          return { name: att.filename, content: fs.readFileSync(absolutePath).toString('base64') };
         }
       }
       return null;
     }).filter(Boolean);
 
     const payload = {
-      from: 'EVENTLINK CDM <onboarding@resend.dev>',
-      to: Array.isArray(to) ? to : [to],
-      subject,
-      html,
+      sender: { name: sName, email: sEmail },
+      to: Array.isArray(to) ? to.map(email => ({ email })) : [{ email: to }],
+      subject: subject,
+      htmlContent: html
     };
 
-    if (resendAttachments.length > 0) {
-      payload.attachments = resendAttachments;
+    if (brevoAttachments.length > 0) {
+      payload.attachment = brevoAttachments;
     }
 
-    const result = await resend.emails.send(payload);
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': apiKey,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data.message || `Brevo API Error: ${response.status}`);
+    }
 
     await runSql('INSERT INTO email_log (recipient_email, subject, type, status) VALUES (?,?,?,?)', [
       Array.isArray(to) ? to.join(', ') : to, subject, type, 'sent'
     ]);
 
-    console.log(`[EMAIL] Success: ${result.data?.id || 'sent'} | Sent to ${to}`);
-    return { success: true, messageId: result.data?.id };
+    console.log(`[EMAIL] Success: ${data.messageId || 'sent'} | Sent to ${to}`);
+    return { success: true, messageId: data.messageId };
   } catch (err) {
     await runSql('INSERT INTO email_log (recipient_email, subject, type, status) VALUES (?,?,?,?)', [
       Array.isArray(to) ? to.join(', ') : to, subject, type, 'failed'
@@ -66,6 +90,31 @@ async function sendEmail({ to, subject, html, attachments = [], type = 'general'
     console.error('[EMAIL ERROR]', err);
     return { success: false, error: err.message };
   }
+}
+
+async function sendPasswordResetEmail(user, resetToken) {
+  const resetUrl = `${FRONTEND_URL}/reset-password?token=${resetToken}`;
+  
+  return sendEmail({
+    to: user.email,
+    subject: `🔒 Password Reset Request — EVENTLINK CDM`,
+    type: 'password_reset',
+    html: `
+      <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
+        <div style="background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 100%);color:white;padding:32px;text-align:center">
+          <h1 style="margin:0;font-size:24px;font-weight:700">Password Reset Request</h1>
+        </div>
+        <div style="padding:32px">
+          <p style="color:#374151;font-size:15px">Hello <strong>${user.full_name}</strong>,</p>
+          <p style="color:#374151;font-size:15px">We received a request to reset your password for your EVENTLINK CDM account. This link will expire in 1 hour.</p>
+          <div style="text-align:center;margin:32px 0">
+            <a href="${resetUrl}" style="display:inline-block;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:white;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:600;font-size:15px">Reset My Password</a>
+          </div>
+          <p style="color:#64748b;font-size:13px;margin-top:24px">If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
+        </div>
+        <div style="background:#f8fafc;padding:16px;text-align:center;color:#94a3b8;font-size:11px;letter-spacing:1px">EVENTLINK CDM — Campus Event Management</div>
+      </div>`
+  });
 }
 
 async function sendEventAnnouncement(user, event) {
@@ -236,5 +285,6 @@ module.exports = {
   sendCertificate,
   sendEventReminder,
   bulkSendAnnouncement,
-  bulkSendCertificates
+  bulkSendCertificates,
+  sendPasswordResetEmail
 };
