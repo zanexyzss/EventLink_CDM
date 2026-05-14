@@ -7,7 +7,7 @@ EventLink CDM is a comprehensive, full-stack event and certificate management pl
 - **Event Management**: Create and manage events with customizable details, banners, and capacity limits.
 - **Attendance Tracking**: Real-time attendance check-ins using manual overrides, dynamically generated PINs, and personalized QR codes.
 - **Automated Certificates**: Generate high-quality, customized PDF certificates for all attendees automatically.
-- **Email Integration**: Bulk email certificates directly to attendees using integrated SMTP services.
+- **Email Integration**: Reliable bulk email delivery using Brevo API / Resend.
 - **Admin Dashboard**: Comprehensive analytics, reporting, and CSV exports for event organizers and Admins.
 - **Role-Based Access**: Secure login system with distinct privileges for Administrators, Organizers, and Students.
 
@@ -18,30 +18,30 @@ EventLink CDM is a comprehensive, full-stack event and certificate management pl
 - **Routing**: React Router v6
 - **Icons & UI**: Lucide React, Framer Motion
 - **Backend API**: Node.js + Express.js
-- **Database Engine**: MySQL (mysql2 connection pool) / XAMPP
+- **Database Engine**: PostgreSQL (Supabase)
 - **PDF Generation**: Puppeteer
-- **Email Service**: Nodemailer
+- **Email Service**: Brevo API / Resend
 
 ## 🛠️ Recent Major Updates
 
-- **v2.0 Database Migration**: Successfully migrated the embedded SQLite database engine to an asynchronous, robust MySQL/XAMPP architecture capable of handling higher concurrent loads.
-- **Async Refactoring**: Completely overhauled the backend API routes and queries to utilize full asynchronous database operations (`async/await`) for improved reliability and non-blocking performance.
-- **Automated Provisioning**: The backend now automatically initializes the `eventlink_cdm` database schema and seeds default administrator accounts if they do not exist.
+- **Cloud-Native Architecture**: Successfully migrated the platform for production deployment on Vercel (Frontend) and Render (Backend API).
+- **Database Migration**: Transitioned from local MySQL to a robust Supabase PostgreSQL database for stable cloud data management.
+- **Email Delivery Optimization**: Replaced basic SMTP with the Brevo API / Resend for reliable, high-deliverability automated emails.
 
 ## ⚙️ Local Development Setup
 
-1. **Prerequisites**: Ensure you have Node.js (v18+) and XAMPP (for MySQL) installed.
-2. **Database**: Start the MySQL module in your XAMPP Control Panel.
+1. **Prerequisites**: Ensure you have Node.js (v18+) installed.
+2. **Database**: A PostgreSQL database (e.g., Supabase) is required.
 3. **Environment Variables**: Create a `.env` file in the root directory.
    ```env
    PORT=3001
    JWT_SECRET=your_super_secret_jwt_key
-   EMAIL_USER=your_email@gmail.com
-   EMAIL_PASS=your_app_password
-   DB_HOST=127.0.0.1
-   DB_USER=root
-   DB_PASS=
-   DB_NAME=eventlink_cdm
+   EMAIL_USER=your_email_or_api_key
+   EMAIL_PASS=your_app_password_or_api_secret
+   DB_HOST=your_postgres_host
+   DB_USER=your_postgres_user
+   DB_PASS=your_postgres_password
+   DB_NAME=your_postgres_db
    ```
 4. **Install Dependencies**:
    ```bash
