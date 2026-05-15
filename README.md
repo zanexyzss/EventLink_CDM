@@ -19,14 +19,24 @@ EventLink CDM is a comprehensive, full-stack event and certificate management pl
 - **Icons & UI**: Lucide React, Framer Motion
 - **Backend API**: Node.js + Express.js
 - **Database Engine**: PostgreSQL (Supabase)
-- **PDF Generation**: Puppeteer
-- **Email Service**: Brevo API / Resend
+- **PDF Generation**: PDFKit
+- **Email Service**: Brevo API
+
+## 🏗️ OOP Architecture
+
+The backend codebase is structured using Object-Oriented Programming (OOP) principles for maintainability and scalability:
+
+- **Inheritance**: Abstract `BaseService` and `BaseModel` classes are extended by concrete entities (e.g., `EmailService`, `User` model).
+- **Encapsulation**: Private class fields (e.g., `#apiKey`, `#tableName`) and private helper methods hide internal complexity and configuration.
+- **Polymorphism**: Subclasses override core methods (like `initialize()`, `validate()`, `serialize()`) to provide entity-specific behaviors.
+- **Abstraction**: Complex operations like PDF drawing and SQL query building are abstracted behind clean, readable interfaces like `generateCertificate()` and `findById()`.
 
 ## 🛠️ Recent Major Updates
 
+- **OOP Refactoring**: Completely refactored backend services and models to strictly adhere to OOP principles.
 - **Cloud-Native Architecture**: Successfully migrated the platform for production deployment on Vercel (Frontend) and Render (Backend API).
 - **Database Migration**: Transitioned from local MySQL to a robust Supabase PostgreSQL database for stable cloud data management.
-- **Email Delivery Optimization**: Replaced basic SMTP with the Brevo API / Resend for reliable, high-deliverability automated emails.
+- **Email Delivery Optimization**: Migrated to the Brevo API for reliable, high-deliverability automated emails.
 
 ## ⚙️ Local Development Setup
 
