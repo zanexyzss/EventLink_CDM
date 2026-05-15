@@ -22,7 +22,7 @@ const { requireOrganizer } = require('./middleware/role');
 
 // These require DB to be initialized — we wrap in async startup
 async function startServer() {
-  // Initialize DB first (sql.js is async)
+  // Initialize DB first (PostgreSQL connection is async)
   await initDatabase();
   console.log('[SERVER] Database ready');
 

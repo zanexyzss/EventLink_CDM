@@ -12,13 +12,8 @@ async function getAllUsers({ role, search, limit = 20, offset = 0 } = {}) {
   const countRow = await queryOne(countSql, params);
   const total = countRow ? countRow.total : 0;
 
-  sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-  // MySQL limits require numbers, wait actually pool.execute converts correctly
-  params.push(limit.toString(), offset.toString()); // mysql2 execute requires string or string-castable if not prepared properly, but let's cast them. Actually, passing numbers to LIMIT sometimes breaks in mysql2 prepared statements without strict types. Let's just cast.
-  
-  // Safe limit/offset for mysql2
-  const finalSql = sql.replace('LIMIT ? OFFSET ?', `LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`);
-  params.pop(); params.pop();
+  // Safe LIMIT/OFFSET for PostgreSQL
+  const finalSql = sql + ` ORDER BY created_at DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
 
   const users = await queryAll(finalSql, params);
   return { users, total };
